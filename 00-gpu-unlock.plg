@@ -1,28 +1,87 @@
 <?xml version="1.0" standalone="yes"?>
-<PLUGIN name="00-gpu-unlock" author="Experimental Unraid adaptation" version="2026.10.25.1" min="7.3.4">
-  <CHANGES>Support NVIDIA autoload suppression on the existing Unraid OS entry; explicitly resume NVIDIA after the attempted preload. Maintain a separate recovery entry with the original boot parameters.</CHANGES>
-  <FILE Run="/bin/bash">
+<PLUGIN name="00-gpu-unlock"
+        author="Unraid GPU Unlock contributors"
+        version="2026.10.25.2"
+        min="7.3.4"
+        pluginURL="https://raw.githubusercontent.com/nonkronk/unraid-gpu-unlock/main/00-gpu-unlock.plg"
+        support="https://github.com/nonkronk/unraid-gpu-unlock/issues"
+        icon="microchip">
+  <CHANGES>
+    ###2026.10.25.2
+    - Self-contained installation via Plugins / Install Plugin URL.
+    - Download the tested GPL kernel module; generate NVIDIA firmware locally.
+    - Configure a nondefault recovery entry and arm the next cold boot.
+    - No automatic reboot or live GPU reset.
+  </CHANGES>
+
+  <FILE Name="/boot/config/plugins/00-gpu-unlock/payload/6.18.58-Unraid/gpu_unlock.ko">
+    <URL>https://github.com/nonkronk/unraid-gpu-unlock/releases/download/v2026.10.25.2/gpu_unlock-6.18.58-Unraid.ko</URL>
+  </FILE>
+  <FILE Name="/boot/config/plugins/00-gpu-unlock/runtime/early-load.sh">
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-gpu-unlock/v2026.10.25.2/runtime/early-load.sh</URL>
+  </FILE>
+  <FILE Name="/boot/config/plugins/00-gpu-unlock/runtime/prepare-firmware.sh">
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-gpu-unlock/v2026.10.25.2/runtime/prepare-firmware.sh</URL>
+  </FILE>
+  <FILE Name="/boot/config/plugins/00-gpu-unlock/runtime/configure-boot.py">
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-gpu-unlock/v2026.10.25.2/runtime/configure-boot.py</URL>
+  </FILE>
+
+  <FILE Run="/bin/bash" Method="install">
     <INLINE><![CDATA[
 set -u
-loader=/boot/config/plugins/00-gpu-unlock/runtime/early-load.sh
-if [ -f "$loader" ]; then
-  bash "$loader" || echo "00-gpu-unlock: loader error; normal boot continues" >&2
-else
-  echo "00-gpu-unlock: no staged loader; attempting normal NVIDIA initialization" >&2
+root=/boot/config/plugins/00-gpu-unlock
+normal_driver() {
   if grep -q 'gpu_unlock.targets=' /proc/cmdline; then
-    modprobe nvidia || echo "00-gpu-unlock: NVIDIA fallback failed; boot original Syslinux entry" >&2
+    modprobe nvidia || echo "00-gpu-unlock: NVIDIA fallback failed; use Recovery at boot" >&2
   fi
+}
+if [ "$(uname -r)" != "6.18.58-Unraid" ]; then
+  echo "00-gpu-unlock: only Unraid kernel 6.18.58-Unraid is supported" >&2
+  normal_driver
+  exit 1
+fi
+if [ ! -s "$root/payload/6.18.58-Unraid/gpu_unlock.ko" ] ||
+   ! modinfo -F vermagic "$root/payload/6.18.58-Unraid/gpu_unlock.ko" | grep -q "^6.18.58-Unraid "; then
+  echo "00-gpu-unlock: matching GPL kernel module is missing or invalid" >&2
+  normal_driver
+  exit 1
+fi
+if [ ! -f "$root/runtime/prepare-firmware.sh" ] ||
+   ! bash "$root/runtime/prepare-firmware.sh"; then
+  echo "00-gpu-unlock: local firmware setup failed; boot options not changed" >&2
+  normal_driver
+  exit 1
+fi
+if [ ! -f "$root/enabled" ]; then
+  if [ ! -f "$root/runtime/configure-boot.py" ] ||
+     ! python3 "$root/runtime/configure-boot.py"; then
+    echo "00-gpu-unlock: automatic boot preparation failed" >&2
+    normal_driver
+    exit 1
+  fi
+fi
+if [ -f "$root/runtime/early-load.sh" ]; then
+  bash "$root/runtime/early-load.sh" || normal_driver
+else
+  echo "00-gpu-unlock: early loader missing; initializing normal NVIDIA" >&2
+  normal_driver
 fi
 exit 0
     ]]></INLINE>
   </FILE>
+
   <FILE Run="/bin/bash" Method="remove">
     <INLINE><![CDATA[
-# Never unload or reset a live GPU during removal.
-if [ -e /boot/config/plugins/00-gpu-unlock/enabled ]; then
-  mv /boot/config/plugins/00-gpu-unlock/enabled /boot/config/plugins/00-gpu-unlock/disabled-on-uninstall
+root=/boot/config/plugins/00-gpu-unlock
+# Do not unload or reset a live GPU.
+if [ -f "$root/runtime/configure-boot.py" ]; then
+  python3 "$root/runtime/configure-boot.py" --disable ||
+    echo "00-gpu-unlock: check your Syslinux boot parameters manually" >&2
+elif [ -e "$root/enabled" ]; then
+  mv "$root/enabled" "$root/disabled-on-uninstall"
 fi
-echo "00-gpu-unlock disabled; remove the Syslinux opt-in separately."
+echo "00-gpu-unlock: disabled; no reboot was performed"
 exit 0
     ]]></INLINE>
   </FILE>
