@@ -1,0 +1,29 @@
+<?xml version="1.0" standalone="yes"?>
+<PLUGIN name="00-gpu-unlock" author="Experimental Unraid adaptation" version="2026.10.25.1" min="7.3.4">
+  <CHANGES>Support NVIDIA autoload suppression on the existing Unraid OS entry; explicitly resume NVIDIA after the attempted preload. Maintain a separate recovery entry with the original boot parameters.</CHANGES>
+  <FILE Run="/bin/bash">
+    <INLINE><![CDATA[
+set -u
+loader=/boot/config/plugins/00-gpu-unlock/runtime/early-load.sh
+if [ -f "$loader" ]; then
+  bash "$loader" || echo "00-gpu-unlock: loader error; normal boot continues" >&2
+else
+  echo "00-gpu-unlock: no staged loader; attempting normal NVIDIA initialization" >&2
+  if grep -q 'gpu_unlock.targets=' /proc/cmdline; then
+    modprobe nvidia || echo "00-gpu-unlock: NVIDIA fallback failed; boot original Syslinux entry" >&2
+  fi
+fi
+exit 0
+    ]]></INLINE>
+  </FILE>
+  <FILE Run="/bin/bash" Method="remove">
+    <INLINE><![CDATA[
+# Never unload or reset a live GPU during removal.
+if [ -e /boot/config/plugins/00-gpu-unlock/enabled ]; then
+  mv /boot/config/plugins/00-gpu-unlock/enabled /boot/config/plugins/00-gpu-unlock/disabled-on-uninstall
+fi
+echo "00-gpu-unlock disabled; remove the Syslinux opt-in separately."
+exit 0
+    ]]></INLINE>
+  </FILE>
+</PLUGIN>

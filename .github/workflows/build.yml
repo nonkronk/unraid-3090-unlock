@@ -1,0 +1,20 @@
+name: Validate Unraid GPU Unlock source
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static validation (no GPU or firmware)
+        run: bash tests/test-static.sh
+      - name: Python benchmark syntax
+        run: python3 -m py_compile bench/gemm.py
