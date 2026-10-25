@@ -45,7 +45,7 @@ class BootConfigurationTests(unittest.TestCase):
         text = self.cfg.read_text()
         self.assertIn("gpu_unlock.targets=0000:0a:00.0", text)
         self.assertIn("modprobe.blacklist=acpi_cpufreq,nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm", text)
-        self.assertIn("label Unraid OS GPU Unlock Recovery", text)
+        self.assertIn("label Unraid OS (No GPU Unlock)", text)
         self.assertIn("append initrd=/bzroot modprobe.blacklist=acpi_cpufreq mitigations=auto\n", text)
         self.assertTrue((self.plugin / "enabled").is_file())
         self.assertEqual(boot.configure(self.cfg, self.sysfs, self.plugin),
@@ -53,8 +53,42 @@ class BootConfigurationTests(unittest.TestCase):
         self.assertEqual(self.cfg.read_text(), text)
         self.assertIn("restored", boot.disable(self.cfg, self.plugin))
         self.assertNotIn("gpu_unlock.targets=", self.cfg.read_text())
-        self.assertNotIn("Unraid OS GPU Unlock Recovery", self.cfg.read_text())
+        self.assertNotIn("Unraid OS (No GPU Unlock)", self.cfg.read_text())
         self.assertEqual(self.cfg.read_text(), ORIGINAL)
+
+    def test_adopts_legacy_manual_setup_without_inventing_recovery(self):
+        original = ORIGINAL.replace(
+            "modprobe.blacklist=acpi_cpufreq mitigations=auto",
+            "modprobe.blacklist=acpi_cpufreq,nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm "
+            "mitigations=auto gpu_unlock.targets=0000:0a:00.0",
+        )
+        self.cfg.write_text(original)
+        legacy = self.plugin.parent / "00-gpu-unlock"
+        legacy.mkdir()
+        (legacy / "enabled").touch()
+        self.assertIn("Adopted", boot.configure(self.cfg, self.sysfs, self.plugin))
+        self.assertEqual(self.cfg.read_text(), original)
+        self.assertTrue((self.plugin / "enabled").is_file())
+        self.assertTrue((self.plugin / "adopted-legacy-boot").is_file())
+        self.assertNotIn("No GPU Unlock", self.cfg.read_text())
+        self.assertIn("not created", boot.disable(self.cfg, self.plugin))
+        self.assertEqual(self.cfg.read_text(), original)
+
+    def test_refuses_legacy_installer_owned_boot_record(self):
+        original = ORIGINAL.replace(
+            "modprobe.blacklist=acpi_cpufreq mitigations=auto",
+            "modprobe.blacklist=acpi_cpufreq,nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm "
+            "mitigations=auto gpu_unlock.targets=0000:0a:00.0",
+        )
+        self.cfg.write_text(original)
+        legacy = self.plugin.parent / "00-gpu-unlock"
+        legacy.mkdir()
+        (legacy / "enabled").touch()
+        (legacy / "boot-setup.json").write_text("{}")
+        with self.assertRaises(boot.SetupError):
+            boot.configure(self.cfg, self.sysfs, self.plugin)
+        self.assertFalse((self.plugin / "enabled").exists())
+        self.assertEqual(self.cfg.read_text(), original)
 
     def test_multiple_cards_rejected_without_modification(self):
         card = self.sysfs / "0000:0b:00.0"

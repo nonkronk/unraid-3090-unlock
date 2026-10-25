@@ -3,7 +3,7 @@
 # Does not change a bound or active GPU.
 set -uo pipefail
 
-readonly CONFIG_ROOT=/boot/config/plugins/00-gpu-unlock
+readonly CONFIG_ROOT=/boot/config/plugins/RTX-3090-Unlock
 readonly FIRMWARE_VERSION=610.43.03
 readonly REQUIRED_FIRMWARE=(
   booter_load_ga102.bin gsp_ga10x.bin gsp_boot_ga102.bin
@@ -14,10 +14,10 @@ readonly REQUIRED_AUTOLOAD_BLACKLIST=(nvidia nvidia_drm nvidia_modeset nvidia_uv
 RESUME_NVIDIA=0
 
 log() {
-  local message="00-gpu-unlock: $*"
+  local message="RTX-3090-Unlock: $*"
   printf '%s\n' "$message"
   { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$message" >> /var/log/gpu-unlock-unraid.log; } 2>/dev/null || true
-  logger -t 00-gpu-unlock -- "$*" 2>/dev/null || true
+  logger -t RTX-3090-Unlock -- "$*" 2>/dev/null || true
 }
 
 has_required_blacklist() {

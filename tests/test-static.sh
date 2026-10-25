@@ -4,13 +4,16 @@ project_dir=$(cd "$(dirname "$0")/.." && pwd -P)
 for script in "$project_dir"/runtime/*.sh "$project_dir"/scripts/*.sh "$project_dir"/tests/*.sh; do
   bash -n "$script"
 done
-python3 - "$project_dir/00-gpu-unlock.plg" <<'PY'
+python3 - "$project_dir/RTX-3090-Unlock.plg" <<'PY'
 import sys
 from xml.etree import ElementTree
 root = ElementTree.parse(sys.argv[1]).getroot()
 assert root.tag == "PLUGIN"
-assert root.attrib["name"] == "00-gpu-unlock"
-assert root.attrib["pluginURL"].startswith("https://raw.githubusercontent.com/")
+assert root.attrib["name"] == "RTX-3090-Unlock"
+assert root.attrib["author"] == "nonkronk"
+# Unraid sorts .plg filenames at boot: unlock must precede nvidia-driver.plg.
+assert "RTX-3090-Unlock.plg" < "nvidia-driver.plg"
+assert root.attrib["pluginURL"].endswith("/RTX-3090-Unlock.plg")
 files = root.findall("FILE")
 downloads = [f for f in files if "Name" in f.attrib]
 actions = [f for f in files if "Run" in f.attrib]

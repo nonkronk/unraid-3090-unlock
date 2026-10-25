@@ -38,7 +38,7 @@ make -C "$source_dir" assets CACHE="$cache"
 make -C "$source_dir/kernel/gpu_unlock" KDIR="$kernel_build" all
 
 flash="$output_dir/flash"
-config="$flash/config/plugins/00-gpu-unlock"
+config="$flash/config/plugins/RTX-3090-Unlock"
 payload="$config/payload/$kernel"
 firmware="$payload/firmware/gpu-unlock/610.43.03"
 mkdir -p "$firmware" "$config/runtime"
@@ -49,7 +49,7 @@ for file in \
   install -m 0644 "$cache/assets/$file" "$firmware/$file"
 done
 install -m 0755 "$project_dir/runtime/early-load.sh" "$config/runtime/early-load.sh"
-install -m 0644 "$project_dir/00-gpu-unlock.plg" "$flash/config/plugins/00-gpu-unlock.plg"
+install -m 0644 "$project_dir/RTX-3090-Unlock.plg" "$flash/config/plugins/RTX-3090-Unlock.plg"
 install -m 0644 "$cache/assets/NVIDIA-LICENSE" "$payload/NVIDIA-LICENSE"
 install -m 0644 "$source_dir/firmware/NOTICE.md" "$payload/FIRMWARE-NOTICE.md"
 

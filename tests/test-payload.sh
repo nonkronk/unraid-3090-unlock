@@ -4,9 +4,9 @@ set -euo pipefail
 [[ $# -eq 2 ]] || { echo "Usage: $0 OUTPUT_DIR KERNEL_RELEASE" >&2; exit 2; }
 output=$1
 kernel=$2
-payload="$output/flash/config/plugins/00-gpu-unlock/payload/$kernel"
-plugin="$output/flash/config/plugins/00-gpu-unlock.plg"
-loader="$output/flash/config/plugins/00-gpu-unlock/runtime/early-load.sh"
+payload="$output/flash/config/plugins/RTX-3090-Unlock/payload/$kernel"
+plugin="$output/flash/config/plugins/RTX-3090-Unlock.plg"
+loader="$output/flash/config/plugins/RTX-3090-Unlock/runtime/early-load.sh"
 [[ -s "$plugin" && -x "$loader" && -s "$payload/gpu_unlock.ko" ]]
 for file in \
   booter_load_ga102.bin gsp_ga10x.bin gsp_boot_ga102.bin \

@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 DRIVER_IDS = ("nvidia", "nvidia_drm", "nvidia_modeset", "nvidia_uvm")
-RECOVERY_LABEL = "Unraid OS GPU Unlock Recovery"
+RECOVERY_LABEL = "Unraid OS (No GPU Unlock)"
 TARGET_RE = re.compile(r"(?<!\S)gpu_unlock\.targets=([^\s]+)")
 BLACKLIST_RE = re.compile(r"(?<!\S)modprobe\.blacklist=([^\s]+)")
 LABEL_RE = re.compile(r"^\s*label\s+(.+?)\s*$", re.I)
@@ -116,7 +116,18 @@ def configure(cfg: Path, pci_root: Path, plugin_root: Path) -> str:
         if len(names) != 1 or not all(n in names[0].split(",") for n in DRIVER_IDS):
             raise SetupError("Existing GPU Unlock boot line lacks NVIDIA blacklist")
         if not (plugin_root / "enabled").is_file():
-            raise SetupError("Existing GPU Unlock boot line requires explicit enabled marker")
+            legacy = plugin_root.parent / "00-gpu-unlock"
+            if (legacy / "enabled").is_file() and not (legacy / "boot-setup.json").exists():
+                # Older manual setup has no reliable original append backup.
+                # Adopt exactly its known target/blacklist, but never invent a recovery entry.
+                plugin_root.mkdir(parents=True, exist_ok=True)
+                (plugin_root / "enabled").touch()
+                (plugin_root / "adopted-legacy-boot").write_text(
+                    "Boot arguments were adopted from 00-gpu-unlock. "
+                    "No recovery entry was created; preserve the original boot USB backup.\n"
+                )
+                return "Adopted existing GPU Unlock boot arguments; recovery entry NOT created"
+            raise SetupError("Existing GPU Unlock boot line is not owned by this plugin; refusing changes")
         return "GPU Unlock boot entry already configured; left unchanged"
 
     if any((label := LABEL_RE.match(line)) and label.group(1) == RECOVERY_LABEL for line in lines):
@@ -182,13 +193,13 @@ def main() -> int:
     parser.add_argument("--disable", action="store_true")
     parser.add_argument("--syslinux", type=Path, default=Path("/boot/syslinux/syslinux.cfg"))
     parser.add_argument("--pci-root", type=Path, default=Path("/sys/bus/pci/devices"))
-    parser.add_argument("--plugin-root", type=Path, default=Path("/boot/config/plugins/00-gpu-unlock"))
+    parser.add_argument("--plugin-root", type=Path, default=Path("/boot/config/plugins/RTX-3090-Unlock"))
     args = parser.parse_args()
     try:
         print(disable(args.syslinux, args.plugin_root) if args.disable else
               configure(args.syslinux, args.pci_root, args.plugin_root))
     except (SetupError, OSError, ValueError, KeyError, json.JSONDecodeError) as error:
-        print(f"00-gpu-unlock: boot setup failed: {error}", file=sys.stderr)
+        print(f"RTX-3090-Unlock: boot setup failed: {error}", file=sys.stderr)
         return 1
     return 0
 

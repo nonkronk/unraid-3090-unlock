@@ -17,7 +17,7 @@ firmware download and extraction scripts **on the user's host**.
 That installation uses Python 3, zstd, curl and tar. Scripts refuse to
 configure boot until the module and firmware have been prepared.
 
-Unraid plugin source: `00-gpu-unlock.plg`.
+Unraid plugin source: `RTX-3090-Unlock.plg`.
 Early loader: `runtime/early-load.sh`.
 Offline-tested boot preparation: `runtime/configure-boot.py`.
 
@@ -47,12 +47,17 @@ matmul operations per round, 3 rounds, and explicit FP32 accumulation.
 
 ## Boot ordering
 
-On Unraid, udev can load NVIDIA before Plugins run. The installer preserves
-the default `Unraid OS` entry and other kernel options, but adds the target
-PCI BDF and four NVIDIA aliases to `modprobe.blacklist=`. It creates a
-non-default recovery entry containing the original boot arguments, as well
-as a full boot configuration backup. The early plugin loader performs the
-GPU Unlock attempt **before** explicitly loading normal NVIDIA.
+Unraid installs plugins in ASCII filename order. `RTX-3090-Unlock.plg` sorts before `nvidia-driver.plg`, so a numeric `00-` prefix is unnecessary. This ordering is part of the current compatibility contract.
+
+On Unraid, udev can load NVIDIA before plugins run. For a fresh supported
+Syslinux setup, the installer preserves the default `Unraid OS` entry and
+other kernel options while adding the target PCI BDF and four NVIDIA aliases
+to `modprobe.blacklist=`. It backs up the boot configuration and adds a
+non-default `Unraid OS (No GPU Unlock)` entry with the original arguments.
+Previously modified boot configurations are not blindly rewritten. A legacy
+manual `00-gpu-unlock` setup can be adopted unchanged, but **no recovery entry
+or new boot-configuration backup is created** in that case. The loader attempts
+GPU Unlock **before** explicitly loading the normal NVIDIA driver.
 
 The loader refuses nonmatching PCI addresses, a bound GPU, missing activation
 marker, missing firmware, incompatible module vermagic, or a missing blacklist.

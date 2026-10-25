@@ -5,7 +5,7 @@ set -euo pipefail
 
 readonly VERSION=610.43.03
 readonly UPSTREAM_COMMIT=649b36c27178fdf9fcaafd767d60dfbb78b6caa2
-readonly CONFIG_ROOT=/boot/config/plugins/00-gpu-unlock
+readonly CONFIG_ROOT=/boot/config/plugins/RTX-3090-Unlock
 readonly OUTPUT="$CONFIG_ROOT/payload/6.18.58-Unraid/firmware/gpu-unlock/$VERSION"
 readonly LICENSE="$CONFIG_ROOT/payload/6.18.58-Unraid/NVIDIA-LICENSE"
 readonly NOTICE="$CONFIG_ROOT/payload/6.18.58-Unraid/FIRMWARE-NOTICE.md"
@@ -20,25 +20,25 @@ for name in "${FILENAMES[@]}"; do
 done
 [[ -s "$LICENSE" && -s "$NOTICE" ]] || ready=0
 if (( ready )); then
-  echo "00-gpu-unlock: firmware already prepared"
+  echo "RTX-3090-Unlock: firmware already prepared"
   exit 0
 fi
 
 for command in curl python3 zstd tar; do
   command -v "$command" >/dev/null || {
-    echo "00-gpu-unlock: missing required command: $command" >&2
+    echo "RTX-3090-Unlock: missing required command: $command" >&2
     exit 1
   }
 done
 [[ $(uname -r) == 6.18.58-Unraid ]] || {
-  echo "00-gpu-unlock: no validated firmware setup for this kernel" >&2
+  echo "RTX-3090-Unlock: no validated firmware setup for this kernel" >&2
   exit 1
 }
 [[ -s "$CONFIG_ROOT/payload/6.18.58-Unraid/gpu_unlock.ko" ]] || {
-  echo "00-gpu-unlock: matching GPL kernel module is not staged" >&2
+  echo "RTX-3090-Unlock: matching GPL kernel module is not staged" >&2
   exit 1
 }
-scratch=$(mktemp -d /tmp/unraid-gpu-unlock.XXXXXXXX)
+scratch=$(mktemp -d /tmp/rtx-3090-unlock.XXXXXXXX)
 trap 'rm -r -- "$scratch"' EXIT
 mkdir -p "$scratch/upstream" "$scratch/assets"
 
@@ -58,12 +58,12 @@ python3 "$scratch/upstream/extract_boot_assets.py" \
 
 for name in "${FILENAMES[@]}"; do
   [[ -s "$scratch/assets/$name" ]] || {
-    echo "00-gpu-unlock: missing generated asset $name" >&2
+    echo "RTX-3090-Unlock: missing generated asset $name" >&2
     exit 1
   }
 done
 [[ -s "$scratch/assets/NVIDIA-LICENSE" ]] || {
-  echo "00-gpu-unlock: missing NVIDIA license" >&2
+  echo "RTX-3090-Unlock: missing NVIDIA license" >&2
   exit 1
 }
 
@@ -73,4 +73,4 @@ for name in "${FILENAMES[@]}"; do
 done
 cp "$scratch/assets/NVIDIA-LICENSE" "$LICENSE"
 cp "$scratch/upstream/NOTICE.md" "$NOTICE"
-echo "00-gpu-unlock: firmware generated locally and staged for next boot"
+echo "RTX-3090-Unlock: firmware generated locally and staged for next boot"
