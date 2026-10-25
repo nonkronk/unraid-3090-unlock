@@ -1,6 +1,6 @@
 # GPU Unlock for Unraid
 
-An Unraid plugin for [Zagitta's GPU Unlock](https://github.com/Zagitta/gpu-unlock), which restores full-rate FP16/BF16 Tensor Core instruction issue on eligible NVIDIA Ampere GPUs. It runs before the NVIDIA driver; no VBIOS flash is required.
+An Unraid plugin for [Zagitta's GPU Unlock](https://github.com/Zagitta/gpu-unlock), which restores full-rate FP16/BF16 Tensor Core instruction issue on eligible NVIDIA Ampere GPUs. It runs before the NVIDIA driver.
 
 > **Tested configuration:** NVIDIA RTX 3090 on Unraid 7.3.4 (kernel `6.18.58-Unraid`). Other GPUs and Unraid versions are experimental and have not been tested with this plugin.
 
