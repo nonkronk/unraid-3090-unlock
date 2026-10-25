@@ -4,7 +4,7 @@ An Unraid plugin for [Zagitta's GPU Unlock](https://github.com/Zagitta/gpu-unloc
 
 ## Requirements
 
-- An NVIDIA Ampere GPU covered by the [upstream device list](https://github.com/Zagitta/gpu-unlock#tested-cards).
+- An NVIDIA Ampere GPU. [Upstream GPU Unlock](https://github.com/Zagitta/gpu-unlock#tested-cards) currently recognizes GA102, GA103, GA104 and GA106; other chips may be skipped.
 - Unraid with the NVIDIA Driver plugin and a GPU available to the host.
 - A `gpu_unlock.ko` module built for the **running Unraid kernel**.
 
