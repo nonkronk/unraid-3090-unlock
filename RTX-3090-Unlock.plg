@@ -18,13 +18,13 @@
     <URL>https://github.com/nonkronk/unraid-3090-unlock/releases/download/v2026.10.25/gpu_unlock-6.18.58-Unraid.ko</URL>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/early-load.sh">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/v2026.10.25/runtime/early-load.sh</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/9c70712ae9da06af4385f05915c34f5a7ab9bf41/runtime/early-load.sh</URL>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/prepare-firmware.sh">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/v2026.10.25/runtime/prepare-firmware.sh</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/9c70712ae9da06af4385f05915c34f5a7ab9bf41/runtime/prepare-firmware.sh</URL>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/configure-boot.py">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/v2026.10.25/runtime/configure-boot.py</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/9c70712ae9da06af4385f05915c34f5a7ab9bf41/runtime/configure-boot.py</URL>
   </FILE>
 
   <FILE Run="/bin/bash" Method="install">
