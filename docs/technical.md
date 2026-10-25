@@ -45,6 +45,33 @@ For a benchmark using your own installed CUDA-enabled PyTorch, run
 `python3 bench/gemm.py` after GPU Unlock. It uses 8192x8192 GEMM, 15
 matmul operations per round, 3 rounds, and explicit FP32 accumulation.
 
+## Build for another Unraid kernel
+
+Use the same Linux x86-64 build dependencies listed above. Determine the
+target server's Unraid version and its exact `uname -r`, then run:
+
+```bash
+bash scripts/build-local.sh /tmp/gpu-unlock-build UNRAID_VERSION KERNEL_RELEASE
+```
+
+For example, use `7.3.4` and `6.18.58-Unraid` for the included build.
+The script downloads the matching official Unraid kernel configuration,
+prepares the Linux source, builds upstream's module, and validates module
+metadata. The kernel sources or build can fail on some Unraid releases;
+a successful build does not constitute hardware validation.
+
+Copy only the built `gpu_unlock.ko` from
+`/tmp/gpu-unlock-build/artifact/flash/config/plugins/RTX-3090-Unlock/payload/KERNEL_RELEASE/`
+into the same `/boot/config/plugins/RTX-3090-Unlock/payload/KERNEL_RELEASE/`
+directory on the Unraid flash before installing the plugin. The installer
+then generates the required firmware locally and checks the module's
+`vermagic`. No kernel build is attempted on the Unraid host.
+
+GPU selection uses `gpu_unlock.targets=all` for fresh installations.
+The upstream kernel module checks its own supported device IDs and skips
+already bound cards. Existing single-device boot entries remain valid.
+Passthrough-bound devices are not reassigned.
+
 ## Boot ordering
 
 Unraid installs plugins in ASCII filename order. `RTX-3090-Unlock.plg` sorts before `nvidia-driver.plg`, so a numeric `00-` prefix is unnecessary. This ordering is part of the current compatibility contract.
@@ -59,14 +86,15 @@ manual `00-gpu-unlock` setup can be adopted unchanged, but **no recovery entry
 or new boot-configuration backup is created** in that case. The loader attempts
 GPU Unlock **before** explicitly loading the normal NVIDIA driver.
 
-The loader refuses nonmatching PCI addresses, a bound GPU, missing activation
-marker, missing firmware, incompatible module vermagic, or a missing blacklist.
-A successful module load alone is not proof of an unlock: check
-`gpu_unlock: unlocked` in dmesg.
+The loader validates the target syntax, activation marker, staged firmware,
+kernel-module vermagic and NVIDIA autoload blacklist. It refuses late execution
+if the NVIDIA driver is already loaded. The upstream module selects its supported
+PCI IDs and skips cards bound to other drivers. A successful module load alone is
+not proof of an unlock: check `gpu_unlock: unlocked` in dmesg.
 
-Changing Unraid kernel versions requires a matching rebuild, release,
-and separate validation. There is no guarantee of benefit for quantized
-LLM inference, VFIO passthrough, or other GPUs.
+Other Unraid kernels require a matching module build and separate validation.
+There is no guarantee of benefit for quantized LLM inference, VFIO passthrough,
+or any particular GPU.
 
 ## Licensing
 

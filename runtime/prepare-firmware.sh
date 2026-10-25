@@ -6,9 +6,11 @@ set -euo pipefail
 readonly VERSION=610.43.03
 readonly UPSTREAM_COMMIT=649b36c27178fdf9fcaafd767d60dfbb78b6caa2
 readonly CONFIG_ROOT=/boot/config/plugins/RTX-3090-Unlock
-readonly OUTPUT="$CONFIG_ROOT/payload/6.18.58-Unraid/firmware/gpu-unlock/$VERSION"
-readonly LICENSE="$CONFIG_ROOT/payload/6.18.58-Unraid/NVIDIA-LICENSE"
-readonly NOTICE="$CONFIG_ROOT/payload/6.18.58-Unraid/FIRMWARE-NOTICE.md"
+readonly KERNEL_RELEASE="$(uname -r)"
+readonly PAYLOAD="$CONFIG_ROOT/payload/$KERNEL_RELEASE"
+readonly OUTPUT="$PAYLOAD/firmware/gpu-unlock/$VERSION"
+readonly LICENSE="$PAYLOAD/NVIDIA-LICENSE"
+readonly NOTICE="$PAYLOAD/FIRMWARE-NOTICE.md"
 readonly FILENAMES=(
   booter_load_ga102.bin gsp_ga10x.bin gsp_boot_ga102.bin
   gsp_boot_desc_ga102.bin v67-ga102-610.43.03.bin
@@ -30,12 +32,8 @@ for command in curl python3 zstd tar; do
     exit 1
   }
 done
-[[ $(uname -r) == 6.18.58-Unraid ]] || {
-  echo "RTX-3090-Unlock: no validated firmware setup for this kernel" >&2
-  exit 1
-}
-[[ -s "$CONFIG_ROOT/payload/6.18.58-Unraid/gpu_unlock.ko" ]] || {
-  echo "RTX-3090-Unlock: matching GPL kernel module is not staged" >&2
+[[ -s "$PAYLOAD/gpu_unlock.ko" ]] || {
+  echo "RTX-3090-Unlock: stage a gpu_unlock.ko built for $KERNEL_RELEASE before installing" >&2
   exit 1
 }
 scratch=$(mktemp -d /tmp/rtx-3090-unlock.XXXXXXXX)

@@ -2,14 +2,13 @@
 <PLUGIN name="RTX-3090-Unlock"
         author="nonkronk"
         version="2026.10.25"
-        min="7.3.4"
         pluginURL="https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/RTX-3090-Unlock.plg"
         support="https://github.com/nonkronk/unraid-3090-unlock/issues"
         icon="microchip">
   <CHANGES>
     ###2026.10.25
     - Self-contained installation via Plugins / Install Plugin URL.
-    - Download the tested GPL kernel module; generate NVIDIA firmware locally.
+    - Include one prebuilt module; accept a separately staged module matching the running kernel.
     - New supported setups receive a boot backup and separate fallback entry; legacy setups can be adopted without rewriting boot options.
     - No automatic reboot or live GPU reset.
   </CHANGES>
@@ -18,13 +17,13 @@
     <URL>https://github.com/nonkronk/unraid-3090-unlock/releases/download/v2026.10.25/gpu_unlock-6.18.58-Unraid.ko</URL>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/early-load.sh">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/9c70712ae9da06af4385f05915c34f5a7ab9bf41/runtime/early-load.sh</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/7d4951dcae216126df5c72b38109e1b9c4cbcace/runtime/early-load.sh</URL>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/prepare-firmware.sh">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/9c70712ae9da06af4385f05915c34f5a7ab9bf41/runtime/prepare-firmware.sh</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/7d4951dcae216126df5c72b38109e1b9c4cbcace/runtime/prepare-firmware.sh</URL>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/configure-boot.py">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/9c70712ae9da06af4385f05915c34f5a7ab9bf41/runtime/configure-boot.py</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/7d4951dcae216126df5c72b38109e1b9c4cbcace/runtime/configure-boot.py</URL>
   </FILE>
 
   <FILE Run="/bin/bash" Method="install">
@@ -36,14 +35,11 @@ normal_driver() {
     modprobe nvidia || echo "RTX-3090-Unlock: NVIDIA fallback failed; check the Syslinux boot options" >&2
   fi
 }
-if [ "$(uname -r)" != "6.18.58-Unraid" ]; then
-  echo "RTX-3090-Unlock: only Unraid kernel 6.18.58-Unraid is supported" >&2
-  normal_driver
-  exit 1
-fi
-if [ ! -s "$root/payload/6.18.58-Unraid/gpu_unlock.ko" ] ||
-   ! modinfo -F vermagic "$root/payload/6.18.58-Unraid/gpu_unlock.ko" | grep -q "^6.18.58-Unraid "; then
-  echo "RTX-3090-Unlock: matching GPL kernel module is missing or invalid" >&2
+kernel=$(uname -r)
+module="$root/payload/$kernel/gpu_unlock.ko"
+vermagic=$(modinfo -F vermagic "$module" 2>/dev/null || true)
+if [ ! -s "$module" ] || [ "${vermagic%% *}" != "$kernel" ]; then
+  echo "RTX-3090-Unlock: no matching module staged for $kernel. Build one using scripts/build-local.sh on a Linux build host." >&2
   normal_driver
   exit 1
 fi

@@ -25,24 +25,37 @@ class SetupError(Exception):
     pass
 
 
-def detect_card(pci_root: Path) -> str:
+def host_gpu_addresses(pci_root: Path) -> list[str]:
+    """Find host-managed NVIDIA display adapters; upstream decides chip support."""
     found = []
     for slot in sorted(pci_root.iterdir()):
         try:
             if (slot / "vendor").read_text().strip().lower() != "0x10de":
                 continue
-            if (slot / "device").read_text().strip().lower() == "0x2204":
-                driver = slot / "driver"
-                if driver.is_symlink() and driver.resolve().name != "nvidia":
-                    raise SetupError("RTX 3090 is bound to a non-NVIDIA driver; refusing VM passthrough changes")
-                if not re.fullmatch(r"[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]", slot.name):
-                    raise SetupError("Invalid NVIDIA PCI address")
-                found.append(slot.name.lower())
+            class_file = slot / "class"
+            if class_file.exists() and not class_file.read_text().strip().lower().startswith("0x03"):
+                continue
+            if not re.fullmatch(r"[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]", slot.name):
+                continue
+            driver = slot / "driver"
+            if driver.is_symlink() and driver.resolve().name != "nvidia":
+                # Never change devices reserved for VFIO or another driver.
+                continue
+            found.append(slot.name.lower())
         except (OSError, UnicodeError):
             continue
-    if len(found) != 1:
-        raise SetupError(f"Expected exactly one RTX 3090 (10de:2204), found {len(found)}")
-    return found[0]
+    if not found:
+        raise SetupError("No host-managed NVIDIA display GPU found")
+    return found
+
+
+def configured_target_valid(value: str, cards: list[str]) -> bool:
+    if value == "all":
+        return True
+    addresses = value.lower().split(",")
+    return bool(addresses) and len(set(addresses)) == len(addresses) and all(
+        address in cards for address in addresses
+    )
 
 
 def find_entry(lines: list[str], label: str) -> tuple[int, int]:
@@ -114,7 +127,8 @@ def write_atomic(destination: Path, content: str) -> None:
 
 
 def configure(cfg: Path, pci_root: Path, plugin_root: Path) -> str:
-    card = detect_card(pci_root)
+    cards = host_gpu_addresses(pci_root)
+    card = "all"
     lines = cfg.read_text().splitlines(keepends=True)
     start, end = find_entry(lines, "Unraid OS")
     if not any(re.fullmatch(r"\s*menu\s+default\s*", line, re.I) for line in lines[start:end]):
@@ -126,8 +140,8 @@ def configure(cfg: Path, pci_root: Path, plugin_root: Path) -> str:
     prefix, options, newline = match.groups()
     target = TARGET_RE.findall(options)
     if target:
-        if target != [card]:
-            raise SetupError("Existing GPU Unlock target differs from detected RTX 3090")
+        if len(target) != 1 or not configured_target_valid(target[0], cards):
+            raise SetupError("Existing GPU Unlock target does not match host-managed NVIDIA GPUs")
         names = BLACKLIST_RE.findall(options)
         if len(names) != 1 or not all(n in names[0].split(",") for n in DRIVER_IDS):
             raise SetupError("Existing GPU Unlock boot line lacks NVIDIA blacklist")
