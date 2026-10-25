@@ -6,7 +6,7 @@ An Unraid plugin for [Zagitta's GPU Unlock](https://github.com/Zagitta/gpu-unloc
 
 ## Requirements
 
-- An NVIDIA Ampere GPU. [Upstream GPU Unlock](https://github.com/Zagitta/gpu-unlock#tested-cards) currently recognizes GA102, GA103, GA104 and GA106; other chips may be skipped.
+- An NVIDIA GA102 or GA104 GPU. The included module is built from upstream commit `649b36c`, which recognizes only those two chips. [Current upstream](https://github.com/Zagitta/gpu-unlock#tested-cards) adds GA103 and GA106, but this plugin does not ship that build yet.
 - Unraid with the NVIDIA Driver plugin and a GPU available to the host.
 - A `gpu_unlock.ko` module built for the **running Unraid kernel**.
 
@@ -40,6 +40,11 @@ Look for `gpu_unlock: unlocked`; `nvidia-smi` alone does not confirm the unlock.
 | --- | ---: |
 | FP16 | **110.10 TFLOPS** |
 | BF16 | **112.50 TFLOPS** |
+
+## Limitations
+
+- **Sleep/suspend:** the included module does not re-unlock after suspend to RAM (for example with the S3 Sleep plugin). After resume the GPU runs at the normal locked rate until the next reboot.
+- **Unraid OS updates:** a new kernel needs a new module. Until one is staged, the plugin stays installed, loads the normal NVIDIA driver and shows a *GPU Unlock not active* notification.
 
 ## Uninstall
 

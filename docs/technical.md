@@ -78,7 +78,7 @@ Unraid installs plugins in ASCII filename order. `RTX-3090-Unlock.plg` sorts bef
 
 On Unraid, udev can load NVIDIA before plugins run. For a fresh supported
 Syslinux setup, the installer preserves the default `Unraid OS` entry and
-other kernel options while adding the target PCI BDF and four NVIDIA aliases
+other kernel options while adding `gpu_unlock.targets=all` and four NVIDIA aliases
 to `modprobe.blacklist=`. It backs up the boot configuration and adds a
 non-default `Unraid OS (No GPU Unlock)` entry with the original arguments.
 Previously modified boot configurations are not blindly rewritten. A legacy
@@ -95,6 +95,33 @@ not proof of an unlock: check `gpu_unlock: unlocked` in dmesg.
 Other Unraid kernels require a matching module build and separate validation.
 There is no guarantee of benefit for quantized LLM inference, VFIO passthrough,
 or any particular GPU.
+
+## Failure handling
+
+Unraid moves a plugin whose install script fails at boot to
+`/boot/config/plugins-error`. On a boot entry this plugin configured, NVIDIA
+autoload is blacklisted, so losing the plugin would leave the GPU without a
+driver on later boots and make the uninstaller unreachable. The install script
+therefore never fails when `gpu_unlock.targets=` is on the running command line:
+it loads the normal NVIDIA driver, posts an Unraid notification and exits 0.
+It still refuses (exit 1) on a fresh installation that cannot be completed.
+`tests/test-install.sh` exercises these paths in a sandbox.
+
+## Releasing
+
+Every `<FILE>` in `RTX-3090-Unlock.plg` carries a `SHA256`. Unraid only
+replaces a file that already exists on the flash when its hash no longer
+matches, so without hashes an update would keep running old scripts.
+
+After a change to `runtime/` is merged to `main`:
+
+```bash
+python3 scripts/pin-runtime.py <merged-commit-on-main> [--module path/to/released.ko]
+```
+
+then bump the plugin `version` (`YYYY.MM.DD` plus an optional letter; Unraid
+compares with `strcmp`) and commit. `tests/test-pins.py` fails CI if a pinned
+commit is not reachable from `HEAD` or a hash does not match.
 
 ## Licensing
 

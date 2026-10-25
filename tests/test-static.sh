@@ -5,13 +5,15 @@ for script in "$project_dir"/runtime/*.sh "$project_dir"/scripts/*.sh "$project_
   bash -n "$script"
 done
 python3 - "$project_dir/RTX-3090-Unlock.plg" <<'PY'
+import re
 import sys
 from xml.etree import ElementTree
 root = ElementTree.parse(sys.argv[1]).getroot()
 assert root.tag == "PLUGIN"
 assert root.attrib["name"] == "RTX-3090-Unlock"
 assert root.attrib["author"] == "nonkronk"
-assert root.attrib["version"] == "2026.10.25"
+# Unraid compares versions with strcmp: keep YYYY.MM.DD[letter].
+assert re.fullmatch(r"\d{4}\.\d{2}\.\d{2}[a-z]?", root.attrib["version"])
 assert root.attrib["icon"] == "microchip"
 # Unraid sorts .plg filenames at boot: unlock must precede nvidia-driver.plg.
 assert "RTX-3090-Unlock.plg" < "nvidia-driver.plg"
@@ -21,6 +23,8 @@ downloads = [f for f in files if "Name" in f.attrib]
 actions = [f for f in files if "Run" in f.attrib]
 assert len(downloads) == 4
 assert all(f.findtext("URL", "").startswith("https://") for f in downloads)
+# Unraid only replaces an existing flash file when its SHA256 no longer matches.
+assert all(re.fullmatch(r"[0-9a-f]{64}", f.findtext("SHA256", "")) for f in downloads)
 assert len(actions) == 2
 assert actions[0].attrib.get("Method") == "install"
 assert actions[1].attrib.get("Method") == "remove"
@@ -45,6 +49,8 @@ grep -Fq 'kernel_release=${3:-6.18.58-Unraid}' "$project_dir/scripts/build-local
 test -f "$project_dir/LICENSE"
 test -f "$project_dir/bench/gemm.py"
 python3 "$project_dir/tests/test-boot-config.py"
+bash "$project_dir/tests/test-install.sh"
+python3 "$project_dir/tests/test-pins.py"
 source "$project_dir/runtime/early-load.sh"
 has_required_blacklist 'quiet modprobe.blacklist=nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm initrd=/bzroot'
 has_required_blacklist 'initrd=/bzroot modprobe.blacklist=acpi_cpufreq,nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm gpu_unlock.targets=0000:0a:00.0'
