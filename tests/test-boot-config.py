@@ -43,7 +43,7 @@ class BootConfigurationTests(unittest.TestCase):
         result = boot.configure(self.cfg, self.sysfs, self.plugin)
         self.assertIn("restart required", result)
         text = self.cfg.read_text()
-        self.assertIn("gpu_unlock.targets=0000:0a:00.0", text)
+        self.assertIn("gpu_unlock.targets=all", text)
         self.assertIn("modprobe.blacklist=acpi_cpufreq,nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm", text)
         self.assertIn("label Unraid OS (No GPU Unlock)", text)
         self.assertIn("append initrd=/bzroot modprobe.blacklist=acpi_cpufreq mitigations=auto\n", text)
@@ -121,15 +121,14 @@ class BootConfigurationTests(unittest.TestCase):
         self.assertTrue((self.plugin / "enabled").exists())
         self.assertEqual(self.cfg.read_text(), ORIGINAL)
 
-    def test_multiple_cards_rejected_without_modification(self):
+    def test_multiple_cards_select_upstream_all(self):
         card = self.sysfs / "0000:0b:00.0"
         card.mkdir()
         (card / "vendor").write_text("0x10de")
-        (card / "device").write_text("0x2204")
-        with self.assertRaises(boot.SetupError):
-            boot.configure(self.cfg, self.sysfs, self.plugin)
-        self.assertEqual(self.cfg.read_text(), ORIGINAL)
-        self.assertFalse((self.plugin / "enabled").exists())
+        (card / "device").write_text("0x2484")
+        boot.configure(self.cfg, self.sysfs, self.plugin)
+        self.assertIn("gpu_unlock.targets=all", self.cfg.read_text())
+        self.assertTrue((self.plugin / "enabled").exists())
 
     def test_vfio_owned_card_rejected(self):
         driver = Path(self.temp.name) / "vfio-pci"
