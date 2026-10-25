@@ -86,14 +86,15 @@ manual `00-gpu-unlock` setup can be adopted unchanged, but **no recovery entry
 or new boot-configuration backup is created** in that case. The loader attempts
 GPU Unlock **before** explicitly loading the normal NVIDIA driver.
 
-The loader refuses nonmatching PCI addresses, a bound GPU, missing activation
-marker, missing firmware, incompatible module vermagic, or a missing blacklist.
-A successful module load alone is not proof of an unlock: check
-`gpu_unlock: unlocked` in dmesg.
+The loader validates the target syntax, activation marker, staged firmware,
+kernel-module vermagic and NVIDIA autoload blacklist. It refuses late execution
+if the NVIDIA driver is already loaded. The upstream module selects its supported
+PCI IDs and skips cards bound to other drivers. A successful module load alone is
+not proof of an unlock: check `gpu_unlock: unlocked` in dmesg.
 
-Changing Unraid kernel versions requires a matching rebuild, release,
-and separate validation. There is no guarantee of benefit for quantized
-LLM inference, VFIO passthrough, or other GPUs.
+Other Unraid kernels require a matching module build and separate validation.
+There is no guarantee of benefit for quantized LLM inference, VFIO passthrough,
+or any particular GPU.
 
 ## Licensing
 
