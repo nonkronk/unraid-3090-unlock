@@ -2,7 +2,7 @@
 <PLUGIN name="RTX-3090-Unlock"
         author="nonkronk"
         version="2026.10.25"
-         pluginURL="https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/RTX-3090-Unlock.plg"
+        pluginURL="https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/RTX-3090-Unlock.plg"
         support="https://github.com/nonkronk/unraid-3090-unlock/issues"
         icon="microchip">
   <CHANGES>
@@ -37,8 +37,8 @@ normal_driver() {
 }
 kernel=$(uname -r)
 module="$root/payload/$kernel/gpu_unlock.ko"
-if [ ! -s "$module" ] ||
-   ! modinfo -F vermagic "$module" | grep -Fq "$kernel "; then
+vermagic=$(modinfo -F vermagic "$module" 2>/dev/null || true)
+if [ ! -s "$module" ] || [ "${vermagic%% *}" != "$kernel" ]; then
   echo "RTX-3090-Unlock: no matching module staged for $kernel. Build one using scripts/build-local.sh on a Linux build host." >&2
   normal_driver
   exit 1
