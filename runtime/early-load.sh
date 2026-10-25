@@ -55,11 +55,11 @@ attempt_unlock() {
     log "disabled (no activation marker); normal NVIDIA initialization will resume"
     return 0
   fi
-  if [[ ! "$parameter" =~ ^[[:xdigit:]]{4}:[[:xdigit:]]{2}:[[:xdigit:]]{2}\.[0-7]$ ]]; then
-    log "invalid target; require one exact PCI BDF, never all/list"
+  local bdf_re='^[[:xdigit:]]{4}:[[:xdigit:]]{2}:[[:xdigit:]]{2}\.[0-7](,[[:xdigit:]]{4}:[[:xdigit:]]{2}:[[:xdigit:]]{2}\.[0-7])*$'
+  if [[ "$parameter" != all && ! "$parameter" =~ $bdf_re ]]; then
+    log "invalid targets; use all or full comma-separated PCI addresses"
     return 0
   fi
-  pci="${parameter,,}"
 
   kernel=$(uname -r) || return 1
   payload="$CONFIG_ROOT/payload/$kernel"
@@ -70,19 +70,8 @@ attempt_unlock() {
     log "no module for running kernel $kernel; normal NVIDIA boot continues"
     return 0
   fi
-  if [[ ! -d "/sys/bus/pci/devices/$pci" ]]; then
-    log "target $pci does not exist; skipping"
-    return 0
-  fi
-  vendor=$(< "/sys/bus/pci/devices/$pci/vendor") || return 1
-  if [[ "$vendor" != 0x10de ]]; then
-    log "target $pci is not NVIDIA; skipping"
-    return 0
-  fi
-  if [[ -L "/sys/bus/pci/devices/$pci/driver" ]]; then
-    log "target $pci already bound; refusing unlock"
-    return 0
-  fi
+  # NVIDIA/GPU Unlock must not have initialized before the early hook.
+  # The upstream module checks chip IDs and skips cards already bound.
   if [[ -d /sys/module/nvidia || -d /sys/module/gpu_unlock ]]; then
     log "NVIDIA or gpu_unlock already loaded; refusing repeat"
     return 0
@@ -110,8 +99,8 @@ attempt_unlock() {
     install -m 0644 "$firmware_dir/$file" "/lib/firmware/gpu-unlock/$FIRMWARE_VERSION/$file" || return 1
   done
   depmod -a "$kernel" || return 1
-  log "loading gpu_unlock for unbound $pci before NVIDIA"
-  modprobe gpu_unlock "targets=$pci" || return 1
+  log "loading gpu_unlock for upstream-eligible targets $parameter before NVIDIA"
+  modprobe gpu_unlock "targets=$parameter" || return 1
   log "module loaded; check dmesg to determine whether unlock succeeded"
 }
 
