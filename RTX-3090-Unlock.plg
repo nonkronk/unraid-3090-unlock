@@ -1,11 +1,16 @@
 <?xml version="1.0" standalone="yes"?>
 <PLUGIN name="RTX-3090-Unlock"
         author="nonkronk"
-        version="2026.10.25"
+        version="2026.10.25a"
         pluginURL="https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/RTX-3090-Unlock.plg"
         support="https://github.com/nonkronk/unraid-3090-unlock/issues"
         icon="microchip">
   <CHANGES>
+    ###2026.10.25a
+    - Never fail at boot on a GPU Unlock boot entry: fall back to normal NVIDIA, keep the plugin installed and show a notification (previously an Unraid upgrade could move the plugin to plugins-error and leave NVIDIA blacklisted).
+    - SHA-256 verification for every download, so updates actually refresh the runtime scripts on the flash.
+    - Runtime scripts pinned to a commit on main.
+
     ###2026.10.25
     - Self-contained installation via Plugins / Install Plugin URL.
     - Include one prebuilt module; accept a separately staged module matching the running kernel.
@@ -15,50 +20,77 @@
 
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/payload/6.18.58-Unraid/gpu_unlock.ko">
     <URL>https://github.com/nonkronk/unraid-3090-unlock/releases/download/v2026.10.25/gpu_unlock-6.18.58-Unraid.ko</URL>
+    <SHA256>ec89b77b2bf2019654b822b84f7c5a8da446cd14cacd0a435ce781ccd4c74621</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/early-load.sh">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/7d4951dcae216126df5c72b38109e1b9c4cbcace/runtime/early-load.sh</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/2fe377515fc26ca8cb1ee3c7e281ecaf9f349483/runtime/early-load.sh</URL>
+    <SHA256>65647f1bb8672ad782d958babdec08ed478cffd9a28d7391b43035c519e35f47</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/prepare-firmware.sh">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/7d4951dcae216126df5c72b38109e1b9c4cbcace/runtime/prepare-firmware.sh</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/2fe377515fc26ca8cb1ee3c7e281ecaf9f349483/runtime/prepare-firmware.sh</URL>
+    <SHA256>626d39dda9ecfadf0088387b317855a0526933bbfb4c4bae9c97352cc78bc0a6</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/configure-boot.py">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/7d4951dcae216126df5c72b38109e1b9c4cbcace/runtime/configure-boot.py</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/2fe377515fc26ca8cb1ee3c7e281ecaf9f349483/runtime/configure-boot.py</URL>
+    <SHA256>ee084d3458251c2bfffb30b6bd429a4609036200cc7c69aa3bc03ca9010841c3</SHA256>
   </FILE>
 
   <FILE Run="/bin/bash" Method="install">
     <INLINE><![CDATA[
 set -u
 root=/boot/config/plugins/RTX-3090-Unlock
-normal_driver() {
-  if grep -q 'gpu_unlock.targets=' /proc/cmdline; then
-    modprobe nvidia || echo "RTX-3090-Unlock: NVIDIA fallback failed; check the Syslinux boot options" >&2
+tag=RTX-3090-Unlock
+notify=/usr/local/emhttp/webGui/scripts/notify
+# A boot entry this plugin configured blacklists NVIDIA autoload. On such a
+# boot this script must never exit non-zero: Unraid would move the plugin to
+# plugins-error, nothing would load NVIDIA on later boots, and the uninstaller
+# that restores the boot options would no longer be reachable.
+configured_boot=0
+grep -q 'gpu_unlock.targets=' /proc/cmdline 2>/dev/null && configured_boot=1
+warn() {
+  echo "$tag: $*" >&2
+  logger -t "$tag" -- "$*" 2>/dev/null || true
+  if [ -x "$notify" ]; then
+    "$notify" -e "RTX 3090 Unlock" -s "GPU Unlock not active" -d "$*" -i warning >/dev/null 2>&1 || true
   fi
+}
+normal_driver() {
+  if [ "$configured_boot" = 1 ] && [ ! -d /sys/module/nvidia ]; then
+    modprobe nvidia || warn "NVIDIA fallback failed; boot the 'Unraid OS (No GPU Unlock)' entry or restore the Syslinux backup"
+  fi
+}
+give_up() {
+  warn "$1"
+  normal_driver
+  if [ "$configured_boot" = 1 ]; then
+    exit 0
+  fi
+  exit 1
 }
 kernel=$(uname -r)
 module="$root/payload/$kernel/gpu_unlock.ko"
 vermagic=$(modinfo -F vermagic "$module" 2>/dev/null || true)
 if [ ! -s "$module" ] || [ "${vermagic%% *}" != "$kernel" ]; then
-  echo "RTX-3090-Unlock: no matching module staged for $kernel. Build one using scripts/build-local.sh on a Linux build host." >&2
-  normal_driver
-  exit 1
+  give_up "no gpu_unlock module for kernel $kernel; NVIDIA runs locked. Build one with scripts/build-local.sh and stage it in $root/payload/$kernel/"
 fi
 if [ ! -f "$root/runtime/prepare-firmware.sh" ] ||
    ! bash "$root/runtime/prepare-firmware.sh"; then
-  echo "RTX-3090-Unlock: local firmware setup failed; boot options not changed" >&2
-  normal_driver
-  exit 1
+  give_up "local firmware setup failed; boot options not changed"
 fi
 if [ ! -f "$root/runtime/configure-boot.py" ] ||
    ! python3 "$root/runtime/configure-boot.py"; then
-  echo "RTX-3090-Unlock: boot configuration validation failed" >&2
-  normal_driver
-  exit 1
+  if [ "$configured_boot" = 1 ]; then
+    # Boot options were changed outside the plugin. Keep running so NVIDIA
+    # resumes; the uninstaller will refuse until they are reconciled.
+    warn "boot options differ from the recorded configuration; uninstall will refuse until they are restored"
+  else
+    give_up "boot configuration validation failed; boot options not changed"
+  fi
 fi
 if [ -f "$root/runtime/early-load.sh" ]; then
   bash "$root/runtime/early-load.sh" || normal_driver
 else
-  echo "RTX-3090-Unlock: early loader missing; initializing normal NVIDIA" >&2
+  warn "early loader missing; initializing normal NVIDIA"
   normal_driver
 fi
 exit 0
