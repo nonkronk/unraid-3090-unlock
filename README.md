@@ -2,13 +2,15 @@
 
 An Unraid plugin for [Zagitta's GPU Unlock](https://github.com/Zagitta/gpu-unlock), which restores full-rate FP16/BF16 Tensor Core instruction issue on eligible NVIDIA Ampere GPUs. It runs before the NVIDIA driver; no VBIOS flash is required.
 
+> **Tested configuration:** NVIDIA RTX 3090 on Unraid 7.3.4 (kernel `6.18.58-Unraid`). Other GPUs and Unraid versions are experimental and have not been tested with this plugin.
+
 ## Requirements
 
 - An NVIDIA Ampere GPU. [Upstream GPU Unlock](https://github.com/Zagitta/gpu-unlock#tested-cards) currently recognizes GA102, GA103, GA104 and GA106; other chips may be skipped.
 - Unraid with the NVIDIA Driver plugin and a GPU available to the host.
 - A `gpu_unlock.ko` module built for the **running Unraid kernel**.
 
-The plugin includes a prebuilt module for `6.18.58-Unraid` (Unraid 7.3.4). Other Unraid kernels can be tried with a matching source-built module. Results on other GPUs and kernels are not yet verified for this Unraid package.
+The plugin includes a prebuilt module for `6.18.58-Unraid` (Unraid 7.3.4). Other Unraid kernels can be tried with a matching source-built module.
 
 ## Install
 
