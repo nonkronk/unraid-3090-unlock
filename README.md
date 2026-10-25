@@ -41,6 +41,15 @@ Look for `gpu_unlock: unlocked`; `nvidia-smi` alone does not confirm the unlock.
 | FP16 | **110.10 TFLOPS** |
 | BF16 | **112.50 TFLOPS** |
 
+Run it yourself, on Linux or Windows (including a VM with the GPU passed through):
+
+```bash
+python -m pip install -r bench/requirements.txt
+python bench/gemm.py
+```
+
+The requirements file pulls the CUDA build of PyTorch; plain `pip install torch` on Windows is CPU-only. A locked RTX 3090 scores roughly 65–75 TFLOPS here.
+
 ## Limitations
 
 - **Sleep/suspend:** the included module does not re-unlock after suspend to RAM (for example with the S3 Sleep plugin). After resume the GPU runs at the normal locked rate until the next reboot.

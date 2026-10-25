@@ -1,0 +1,11 @@
+# CUDA build of PyTorch for bench/gemm.py.
+# A plain `pip install torch` on Windows installs a CPU-only build, which makes
+# the benchmark report "CUDA device unavailable". This index serves the CUDA 13.0
+# build; it runs on any driver whose nvidia-smi shows "CUDA Version" 13.0 or newer.
+#
+#   python -m pip install -r bench/requirements.txt
+#
+# For an older driver, replace cu130 with a CUDA version your driver supports
+# (see https://pytorch.org/get-started/locally/).
+--index-url https://download.pytorch.org/whl/cu130
+torch

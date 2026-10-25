@@ -41,9 +41,11 @@ sources, prepares the kernel build tree, builds the upstream module, generates
 firmware, and validates the offline payload. It **does not install anything
 on the Unraid host**. Bitwise reproducibility is not claimed.
 
-For a benchmark using your own installed CUDA-enabled PyTorch, run
-`python3 bench/gemm.py` after GPU Unlock. It uses 8192x8192 GEMM, 15
-matmul operations per round, 3 rounds, and explicit FP32 accumulation.
+To benchmark, install the CUDA build of PyTorch with
+`python -m pip install -r bench/requirements.txt` (CUDA 13.0 wheels; needs a
+driver reporting CUDA 13.0 or newer), then run `python bench/gemm.py`. It uses
+8192x8192 GEMM, 15 matmul operations per round, 3 rounds, and explicit FP32
+accumulation. The script refuses a CPU-only PyTorch build with instructions.
 
 ## Build for another Unraid kernel
 

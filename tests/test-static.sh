@@ -48,6 +48,8 @@ grep -Fq '649b36c27178fdf9fcaafd767d60dfbb78b6caa2' "$project_dir/scripts/build-
 grep -Fq 'kernel_release=${3:-6.18.58-Unraid}' "$project_dir/scripts/build-local.sh"
 test -f "$project_dir/LICENSE"
 test -f "$project_dir/bench/gemm.py"
+grep -qx -- "--index-url https://download.pytorch.org/whl/cu[0-9]*" "$project_dir/bench/requirements.txt"
+grep -qx "torch" "$project_dir/bench/requirements.txt"
 python3 "$project_dir/tests/test-boot-config.py"
 bash "$project_dir/tests/test-install.sh"
 python3 "$project_dir/tests/test-pins.py"
