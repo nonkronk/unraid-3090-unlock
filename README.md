@@ -34,14 +34,12 @@ nvidia-smi
 
 Look for `gpu_unlock: unlocked`; `nvidia-smi` alone does not confirm the unlock.
 
-## RTX 3090 benchmark (350 W)
+## RTX 3090 benchmark (350 W, median of 3 runs)
 
 | PyTorch 2.14.1+cu130 | GEMM throughput |
 | --- | ---: |
 | FP16 | **110.10 TFLOPS** |
 | BF16 | **112.50 TFLOPS** |
-
-Median of three rounds. No same-GPU stock baseline or inference speedup is claimed.
 
 ## Uninstall
 
