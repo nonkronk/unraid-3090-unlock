@@ -79,6 +79,22 @@ def merge_options(original: str, card: str) -> str:
     return updated + " gpu_unlock.targets=" + card
 
 
+def infer_normal_options(options: str) -> str:
+    """Infer rollback for older manually configured GPU Unlock installations."""
+    if len(TARGET_RE.findall(options)) != 1:
+        raise SetupError("Expected one existing GPU Unlock target")
+    result = TARGET_RE.sub("", options, count=1)
+    blacklists = BLACKLIST_RE.findall(result)
+    if len(blacklists) != 1:
+        raise SetupError("Expected one NVIDIA blacklist")
+    retained = [n for n in blacklists[0].split(",") if n and n not in DRIVER_IDS]
+    result = BLACKLIST_RE.sub(
+        "modprobe.blacklist=" + ",".join(retained) if retained else "",
+        result, count=1
+    )
+    return " ".join(result.split())
+
+
 def write_atomic(destination: Path, content: str) -> None:
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=destination.parent,
                                      prefix=".gpu-unlock-", delete=False) as temp:
@@ -115,20 +131,54 @@ def configure(cfg: Path, pci_root: Path, plugin_root: Path) -> str:
         names = BLACKLIST_RE.findall(options)
         if len(names) != 1 or not all(n in names[0].split(",") for n in DRIVER_IDS):
             raise SetupError("Existing GPU Unlock boot line lacks NVIDIA blacklist")
-        if not (plugin_root / "enabled").is_file():
-            legacy = plugin_root.parent / "00-gpu-unlock"
-            if (legacy / "enabled").is_file() and not (legacy / "boot-setup.json").exists():
-                # Older manual setup has no reliable original append backup.
-                # Adopt exactly its known target/blacklist, but never invent a recovery entry.
-                plugin_root.mkdir(parents=True, exist_ok=True)
-                (plugin_root / "enabled").touch()
-                (plugin_root / "adopted-legacy-boot").write_text(
-                    "Boot arguments were adopted from 00-gpu-unlock. "
-                    "No recovery entry was created; preserve the original boot USB backup.\n"
-                )
-                return "Adopted existing GPU Unlock boot arguments; recovery entry NOT created"
-            raise SetupError("Existing GPU Unlock boot line is not owned by this plugin; refusing changes")
-        return "GPU Unlock boot entry already configured; left unchanged"
+        marker = plugin_root / "enabled"
+        record_file = plugin_root / "boot-setup.json"
+        if record_file.is_file():
+            saved = json.loads(record_file.read_text())
+            if saved["configured_append"] != options:
+                raise SetupError("Current boot options differ from rollback record")
+            recovery = saved.get("recovery_block", "")
+            if recovery and "".join(lines).count(recovery) != 1:
+                raise SetupError("Recorded fallback boot entry changed")
+            marker.touch(exist_ok=True)
+            return "GPU Unlock boot entry already configured; left unchanged"
+
+        legacy = plugin_root.parent / "00-gpu-unlock"
+        legacy_record = legacy / "boot-setup.json"
+        if legacy_record.is_file() and (legacy / "enabled").is_file():
+            previous = json.loads(legacy_record.read_text())
+            if not all(key in previous for key in
+                       ("configured_append", "original_append", "recovery_block")):
+                raise SetupError("Legacy rollback record is incomplete")
+            if previous["configured_append"] != options:
+                raise SetupError("Legacy recorded boot options differ; refusing migration")
+            if "".join(lines).count(previous["recovery_block"]) != 1:
+                raise SetupError("Legacy fallback entry was changed; refusing migration")
+            plugin_root.mkdir(parents=True, exist_ok=True)
+            write_atomic(record_file, json.dumps(previous) + "\n")
+            marker.touch(exist_ok=True)
+            try:
+                legacy_record.rename(legacy / "boot-setup-transferred.json")
+            except OSError:
+                marker.unlink(missing_ok=True)
+                record_file.unlink(missing_ok=True)
+                raise
+            return "Migrated existing rollback record; old plugin can now be removed"
+
+        if (legacy / "enabled").is_file() or (plugin_root / "adopted-legacy-boot").is_file():
+            # Explicitly record the inferred pre-unlock arguments. Uninstall can
+            # now safely restore normal NVIDIA startup instead of leaving it blacklisted.
+            plugin_root.mkdir(parents=True, exist_ok=True)
+            record = {
+                "source": "legacy-manual",
+                "original_append": infer_normal_options(options),
+                "configured_append": options,
+                "recovery_block": "",
+            }
+            write_atomic(record_file, json.dumps(record) + "\n")
+            marker.touch(exist_ok=True)
+            return "Adopted manual boot setup with a reversible uninstall plan"
+        raise SetupError("Existing GPU Unlock boot line has no recognized owner; refusing changes")
 
     if any((label := LABEL_RE.match(line)) and label.group(1) == RECOVERY_LABEL for line in lines):
         raise SetupError("Recovery entry already exists unexpectedly")
@@ -151,41 +201,57 @@ def configure(cfg: Path, pci_root: Path, plugin_root: Path) -> str:
                 kernel_lines[0].rstrip("\r\n") + "\n" +
                 prefix + options + "\n")
     content = "".join(lines).rstrip("\r\n") + "\n" + recovery
-    write_atomic(cfg, content)
     plugin_root.mkdir(parents=True, exist_ok=True)
-    (plugin_root / "boot-setup.json").write_text(json.dumps({
+    record_file = plugin_root / "boot-setup.json"
+    if record_file.exists():
+        raise SetupError("Rollback record already exists; refusing to overwrite")
+    # Save the rollback plan BEFORE changing boot arguments.
+    write_atomic(record_file, json.dumps({
         "backup": str(backup),
         "original_append": options,
         "configured_append": updated,
         "recovery_block": recovery,
     }) + "\n")
-    (plugin_root / "enabled").touch(exist_ok=True)
-    return f"Prepared GPU Unlock for {card}; recovery added; cold boot required"
+    try:
+        write_atomic(cfg, content)
+        (plugin_root / "enabled").touch(exist_ok=True)
+    except OSError:
+        if cfg.read_text() == content:
+            write_atomic(cfg, backup.read_text())
+        record_file.unlink(missing_ok=True)
+        raise
+    return f"Prepared GPU Unlock for {card}; recovery added; restart required"
 
 
 def disable(cfg: Path, plugin_root: Path) -> str:
+    """Restore boot settings before disabling. Never silently strand NVIDIA."""
     marker = plugin_root / "enabled"
-    if marker.exists():
-        marker.rename(plugin_root / "disabled-on-uninstall")
     record = plugin_root / "boot-setup.json"
     if not record.is_file():
-        return "Activation disabled; boot options were not created by this installer"
+        if marker.exists():
+            raise SetupError("Uninstall refused: missing original boot options")
+        return "Already disabled; nothing to restore"
     saved = json.loads(record.read_text())
     lines = cfg.read_text().splitlines(keepends=True)
     start, end = find_entry(lines, "Unraid OS")
     idx = find_append(lines, start, end)
     match = APPEND_RE.match(lines[idx])
     if match is None or match.group(2) != saved["configured_append"]:
-        return "Activation disabled; Syslinux was edited since install, restore manually"
+        raise SetupError("Uninstall refused: Syslinux boot options changed since install")
     current = "".join(lines)
-    recovery = saved["recovery_block"]
-    if current.count(recovery) != 1:
-        return "Activation disabled; recovery entry changed, restore manually"
+    recovery = saved.get("recovery_block", "")
+    if recovery and current.count(recovery) != 1:
+        raise SetupError("Uninstall refused: fallback boot entry changed")
     lines[idx] = match.group(1) + saved["original_append"] + (match.group(3) or "\n")
-    restored = "".join(lines).replace(recovery, "", 1)
+    restored = "".join(lines)
+    if recovery:
+        restored = restored.replace(recovery, "", 1)
+    # No runtime, VM, or GPU action. Restore the boot file first.
     write_atomic(cfg, restored)
+    if marker.exists():
+        marker.rename(plugin_root / "disabled-on-uninstall")
     record.rename(plugin_root / "boot-setup-restored.json")
-    return "GPU Unlock disabled; original default boot options restored"
+    return "GPU Unlock disabled; next boot uses restored NVIDIA boot options"
 
 
 def main() -> int:

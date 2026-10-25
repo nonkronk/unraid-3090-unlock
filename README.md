@@ -13,8 +13,7 @@ Unraid **Plugins → Install Plugin**, then paste:
 https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/RTX-3090-Unlock.plg
 ```
 
-After a successful installation, perform a **complete shutdown and power-on** when convenient.
-A normal warm reboot might not fully reset the GPU. The plugin does **not** restart Unraid itself.
+After a successful installation, **restart Unraid** when convenient. The plugin does **not** restart the server itself.
 
 ## Exactly what the plugin does
 
@@ -36,7 +35,7 @@ The plugin does **not** flash the GPU VBIOS, change GPU clocks/power limits, sto
 
 ## Verify
 
-After the next cold power-on:
+After the next restart:
 
 ```bash
 dmesg | grep -i gpu_unlock
@@ -51,9 +50,9 @@ A successfully loaded module does not prove the unlock worked; look for `gpu_unl
 - **Existing manually configured installations:** the plugin can adopt a compatible existing setup **without changing Syslinux**. In this case, **no new recovery boot entry is created**. This includes the original `00-gpu-unlock` setup where no installer backup record exists.
 - Other boot layouts are rejected rather than rewritten blindly. If the boot menu is inaccessible, restore the backed-up Syslinux configuration from the boot USB using another computer.
 
-Uninstalling disables the plugin. It restores the original boot arguments and removes the extra entry **only if this installer created them and they remain unmodified**. Adopted manual configurations require manual boot-argument restoration.
+Uninstalling restores boot settings **before** disabling the plugin. For fresh installations it restores the saved original options; for adopted manual setups it removes the known GPU Unlock options. If boot options have since been edited, it refuses to uninstall rather than leave NVIDIA blacklisted.
 
-**Upgrading from `00-gpu-unlock`:** install this new plugin first. Once the new plugin reports success, uninstall the old one; do not leave both installed across the next boot. If the old plugin has its own boot-setup record, the new installer will refuse automatic adoption.
+**Upgrading from `00-gpu-unlock`:** install this plugin first. It adopts the existing boot settings or transfers the previous rollback record. Then uninstall the old plugin. No extra reboot is required for that migration.
 
 ## Measured RTX 3090 result (350 W)
 

@@ -110,7 +110,7 @@ attempt_unlock() {
     install -m 0644 "$firmware_dir/$file" "/lib/firmware/gpu-unlock/$FIRMWARE_VERSION/$file" || return 1
   done
   depmod -a "$kernel" || return 1
-  log "loading gpu_unlock for unbound $pci before NVIDIA; requires a cold card"
+  log "loading gpu_unlock for unbound $pci before NVIDIA"
   modprobe gpu_unlock "targets=$pci" || return 1
   log "module loaded; check dmesg to determine whether unlock succeeded"
 }
@@ -127,7 +127,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     if modprobe nvidia; then
       log "normal NVIDIA module initialized after GPU Unlock phase"
     else
-      log "WARNING: NVIDIA module failed to initialize; cold boot original Syslinux entry for rollback"
+      log "WARNING: NVIDIA module failed to initialize; restart with the original Syslinux boot entry to roll back"
     fi
   fi
   exit 0

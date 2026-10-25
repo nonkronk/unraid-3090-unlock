@@ -41,7 +41,7 @@ class BootConfigurationTests(unittest.TestCase):
 
     def test_configure_recovery_idempotence_and_disable(self):
         result = boot.configure(self.cfg, self.sysfs, self.plugin)
-        self.assertIn("cold boot required", result)
+        self.assertIn("restart required", result)
         text = self.cfg.read_text()
         self.assertIn("gpu_unlock.targets=0000:0a:00.0", text)
         self.assertIn("modprobe.blacklist=acpi_cpufreq,nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm", text)
@@ -69,12 +69,12 @@ class BootConfigurationTests(unittest.TestCase):
         self.assertIn("Adopted", boot.configure(self.cfg, self.sysfs, self.plugin))
         self.assertEqual(self.cfg.read_text(), original)
         self.assertTrue((self.plugin / "enabled").is_file())
-        self.assertTrue((self.plugin / "adopted-legacy-boot").is_file())
+        self.assertTrue((self.plugin / "boot-setup.json").is_file())
         self.assertNotIn("No GPU Unlock", self.cfg.read_text())
-        self.assertIn("not created", boot.disable(self.cfg, self.plugin))
-        self.assertEqual(self.cfg.read_text(), original)
+        self.assertIn("restored", boot.disable(self.cfg, self.plugin))
+        self.assertEqual(self.cfg.read_text(), ORIGINAL)
 
-    def test_refuses_legacy_installer_owned_boot_record(self):
+    def test_refuses_incomplete_legacy_boot_record(self):
         original = ORIGINAL.replace(
             "modprobe.blacklist=acpi_cpufreq mitigations=auto",
             "modprobe.blacklist=acpi_cpufreq,nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm "
@@ -89,6 +89,37 @@ class BootConfigurationTests(unittest.TestCase):
             boot.configure(self.cfg, self.sysfs, self.plugin)
         self.assertFalse((self.plugin / "enabled").exists())
         self.assertEqual(self.cfg.read_text(), original)
+
+    def test_migrates_legacy_managed_backup_and_restores_it(self):
+        legacy = self.plugin.parent / "00-gpu-unlock"
+        legacy.mkdir()
+        boot.configure(self.cfg, self.sysfs, legacy)
+        configured = self.cfg.read_text()
+        self.assertTrue((legacy / "boot-setup.json").exists())
+        result = boot.configure(self.cfg, self.sysfs, self.plugin)
+        self.assertIn("Migrated", result)
+        self.assertEqual(self.cfg.read_text(), configured)
+        self.assertTrue((legacy / "boot-setup-transferred.json").is_file())
+        self.assertFalse((legacy / "boot-setup.json").exists())
+        self.assertTrue((self.plugin / "boot-setup.json").is_file())
+        self.assertIn("restored", boot.disable(self.cfg, self.plugin))
+        self.assertEqual(self.cfg.read_text(), ORIGINAL)
+
+    def test_changed_boot_options_refuse_uninstall_without_disabling(self):
+        boot.configure(self.cfg, self.sysfs, self.plugin)
+        changed = self.cfg.read_text().replace("mitigations=auto", "mitigations=off", 1)
+        self.cfg.write_text(changed)
+        with self.assertRaises(boot.SetupError):
+            boot.disable(self.cfg, self.plugin)
+        self.assertEqual(self.cfg.read_text(), changed)
+        self.assertTrue((self.plugin / "enabled").is_file())
+
+    def test_missing_rollback_record_refuses_uninstall_without_disabling(self):
+        (self.plugin / "enabled").touch()
+        with self.assertRaises(boot.SetupError):
+            boot.disable(self.cfg, self.plugin)
+        self.assertTrue((self.plugin / "enabled").exists())
+        self.assertEqual(self.cfg.read_text(), ORIGINAL)
 
     def test_multiple_cards_rejected_without_modification(self):
         card = self.sysfs / "0000:0b:00.0"

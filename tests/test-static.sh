@@ -27,7 +27,11 @@ assert actions[1].attrib.get("Method") == "remove"
 loader = actions[0].findtext("INLINE") or ""
 assert "prepare-firmware.sh" in loader
 assert "configure-boot.py" in loader
+assert 'if [ ! -f "$root/enabled" ]' not in loader
 assert "bash \"$root/runtime/early-load.sh\"" in loader
+removal = actions[1].findtext("INLINE") or ""
+assert 'python3 "$root/runtime/configure-boot.py" --disable' in removal
+assert "exit 1" in removal
 PY
 grep -Fq '$CONFIG_ROOT/enabled' "$project_dir/runtime/early-load.sh"
 grep -Fq 'gpu_unlock\.targets=' "$project_dir/runtime/early-load.sh"
