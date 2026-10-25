@@ -1,16 +1,16 @@
 <?xml version="1.0" standalone="yes"?>
 <PLUGIN name="00-gpu-unlock"
-        author="Unraid GPU Unlock contributors"
+        author="nonkronk"
         version="2026.10.25.2"
         min="7.3.4"
-        pluginURL="https://raw.githubusercontent.com/nonkronk/unraid-gpu-unlock/main/00-gpu-unlock.plg"
-        support="https://github.com/nonkronk/unraid-gpu-unlock/issues"
+        pluginURL="https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/00-gpu-unlock.plg"
+        support="https://github.com/nonkronk/unraid-3090-unlock/issues"
         icon="microchip">
   <CHANGES>
     ###2026.10.25.2
     - Self-contained installation via Plugins / Install Plugin URL.
     - Download the tested GPL kernel module; generate NVIDIA firmware locally.
-    - Configure a nondefault recovery entry and arm the next cold boot.
+    - Fresh supported setups create a recovery entry; existing configured boot settings are left unchanged.
     - No automatic reboot or live GPU reset.
   </CHANGES>
 
@@ -33,7 +33,7 @@ set -u
 root=/boot/config/plugins/00-gpu-unlock
 normal_driver() {
   if grep -q 'gpu_unlock.targets=' /proc/cmdline; then
-    modprobe nvidia || echo "00-gpu-unlock: NVIDIA fallback failed; use Recovery at boot" >&2
+    modprobe nvidia || echo "00-gpu-unlock: NVIDIA fallback failed; check Syslinux boot options or restore the original boot USB configuration" >&2
   fi
 }
 if [ "$(uname -r)" != "6.18.58-Unraid" ]; then

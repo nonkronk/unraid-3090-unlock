@@ -1,4 +1,4 @@
-name: Validate Unraid GPU Unlock source
+name: Validate RTX 3090 Unlock plugin
 
 on:
   push:

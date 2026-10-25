@@ -11,6 +11,8 @@ root = ElementTree.parse(sys.argv[1]).getroot()
 assert root.tag == "PLUGIN"
 assert root.attrib["name"] == "RTX-3090-Unlock"
 assert root.attrib["author"] == "nonkronk"
+assert root.attrib["version"] == "2026.10.25"
+assert root.attrib["icon"] == "microchip"
 # Unraid sorts .plg filenames at boot: unlock must precede nvidia-driver.plg.
 assert "RTX-3090-Unlock.plg" < "nvidia-driver.plg"
 assert root.attrib["pluginURL"].endswith("/RTX-3090-Unlock.plg")
