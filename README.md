@@ -1,66 +1,47 @@
 # RTX 3090 Unlock for Unraid
 
-An experimental, installable Unraid plugin based on [Zagitta/gpu-unlock](https://github.com/Zagitta/gpu-unlock).
-**Currently packaged for Unraid 7.3.4 (kernel 6.18.58-Unraid) and one RTX 3090 (10de:2204).**
+An experimental Unraid plugin that runs [GPU Unlock](https://github.com/Zagitta/gpu-unlock) on an NVIDIA RTX 3090 before the NVIDIA driver initializes.
 
-> **Experimental — use at your own risk.** This changes kernel-level GPU initialization and boot parameters. It may cause GPU/driver failure, instability, or boot problems. Back up your Unraid flash drive and make sure you can access its boot menu or USB before installing. There is **no warranty**. Not affiliated with or endorsed by Unraid or NVIDIA.
+## Compatibility
+
+- Unraid **7.3.4** (kernel `6.18.58-Unraid`)
+- One **RTX 3090** (PCI ID `10de:2204`) available to the Unraid host, not assigned to a VM
+- NVIDIA Driver plugin
+
+Other GPUs and Unraid kernel versions are not supported by this release.
 
 ## Install
 
-Unraid **Plugins → Install Plugin**, then paste:
+1. Back up your Unraid boot flash drive.
+2. Open **Plugins → Install Plugin** and enter:
 
-```text
-https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/RTX-3090-Unlock.plg
-```
+   ```text
+   https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/RTX-3090-Unlock.plg
+   ```
 
-After a successful installation, **restart Unraid** when convenient. The plugin does **not** restart the server itself.
+3. Once installed, **restart Unraid**.
 
-## Exactly what the plugin does
-
-**At installation:**
-
-1. Downloads the GPL-licensed `gpu_unlock.ko` compiled for the **exact** Unraid kernel.
-2. On your Unraid host, downloads pinned NVIDIA input archives and generates the necessary GPU firmware locally. No NVIDIA firmware blobs are shipped with the plugin.
-3. Finds exactly one RTX 3090 and rejects GPU passthrough/VFIO assignments or unsupported kernels.
-4. **For a fresh, supported Syslinux configuration:** backs up `/boot/syslinux/syslinux.cfg`, adds a GPU-specific boot target and NVIDIA auto-loading blacklist to the default `Unraid OS` entry, and creates a **non-default** `Unraid OS (No GPU Unlock)` entry with its original options.
-5. Stores the kernel module, generated firmware, and activation marker under `/boot/config/plugins/RTX-3090-Unlock/` on the Unraid flash drive.
-
-**At subsequent boots:**
-
-1. Unraid processes `RTX-3090-Unlock.plg` **before** `nvidia-driver.plg` (Unraid sorts plugin filenames).
-2. The loader verifies that the target GPU is **unbound**, checks the kernel module/firmware, and attempts `gpu_unlock`.
-3. It then explicitly loads the normal NVIDIA driver, including when it safely skips or fails to unlock.
-
-The plugin does **not** flash the GPU VBIOS, change GPU clocks/power limits, stop the array, start/stop VMs, or automatically reboot.
+The installer downloads the matching GPU Unlock module, prepares the required firmware locally, and configures boot options. It does not restart Unraid automatically.
 
 ## Verify
 
-After the next restart:
+After restarting, run in the Unraid terminal:
 
 ```bash
 dmesg | grep -i gpu_unlock
 nvidia-smi
 ```
 
-A successfully loaded module does not prove the unlock worked; look for `gpu_unlock: unlocked` in the kernel messages.
+Look for `gpu_unlock: unlocked` in the kernel log. `nvidia-smi` should also detect the GPU.
 
-## Recovery and existing installations
+## Uninstall
 
-- **New supported installations:** the installer adds a separate `Unraid OS (No GPU Unlock)` boot option. Select it **if the boot menu remains accessible** and the GPU Unlock boot option fails. It preserves the original kernel arguments.
-- **Existing manually configured installations:** the plugin can adopt a compatible existing setup **without changing Syslinux**. In this case, **no new recovery boot entry is created**. This includes the original `00-gpu-unlock` setup where no installer backup record exists.
-- Other boot layouts are rejected rather than rewritten blindly. If the boot menu is inaccessible, restore the backed-up Syslinux configuration from the boot USB using another computer.
+Remove **RTX 3090 Unlock** from **Plugins → Installed Plugins**, then restart Unraid. The uninstaller restores the saved boot options if they have not been changed since installation. If they were changed manually, removal is refused to avoid altering an unknown configuration.
 
-Uninstalling restores boot settings **before** disabling the plugin. For fresh installations it restores the saved original options; for adopted manual setups it removes the known GPU Unlock options. If boot options have since been edited, it refuses to uninstall rather than leave NVIDIA blacklisted.
+Fresh installations also provide an **Unraid OS (No GPU Unlock)** boot-menu entry for recovery.
 
-**Upgrading from `00-gpu-unlock`:** install this plugin first. It adopts the existing boot settings or transfers the previous rollback record. Then uninstall the old plugin. No extra reboot is required for that migration.
+## Disclaimer
 
-## Measured RTX 3090 result (350 W)
+**Experimental software. Use at your own risk.** GPU initialization and boot settings are modified; compatibility and stability are not guaranteed. Keep a backup of your boot flash drive. No warranty is provided. This project is not affiliated with Unraid or NVIDIA.
 
-| PyTorch 2.14.1+cu130 | GEMM throughput |
-| --- | ---: |
-| FP16 | **110.10 TFLOPS** |
-| BF16 | **112.50 TFLOPS** |
-
-Median of three rounds. No same-GPU stock baseline or inference speedup is claimed.
-
-[Technical details](docs/technical.md) · [GPL-2.0-only source license](LICENSE)
+[Technical details](docs/technical.md) · [License](LICENSE)
