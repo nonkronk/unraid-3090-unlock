@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<CommunityApplications>
+  <Profile>
+Unraid plugins by **nonkronk**.
+
+- **RTX 3090 Unlock**: Unraid packaging of Zagitta's GPU Unlock, restoring full-rate FP16/BF16 Tensor Core issue on NVIDIA GA102/GA104 GPUs. Experimental; tested on RTX 3090 with Unraid 7.3.4.
+
+Support, bug reports and questions: [GitHub issues](https://github.com/nonkronk/unraid-3090-unlock/issues).
+  </Profile>
+  <Icon>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/icon.svg</Icon>
+  <WebPage>https://github.com/nonkronk/unraid-3090-unlock</WebPage>
+</CommunityApplications>
