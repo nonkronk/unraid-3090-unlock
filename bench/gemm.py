@@ -14,8 +14,18 @@ torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = False
 if hasattr(torch.backends.cuda.matmul, "allow_fp16_accumulation"):
     torch.backends.cuda.matmul.allow_fp16_accumulation = False
 
+if torch.version.cuda is None:
+    raise SystemExit(
+        f"PyTorch {torch.__version__} is a CPU-only build. Install the CUDA build:\n"
+        "  python -m pip uninstall -y torch\n"
+        "  python -m pip install -r bench/requirements.txt"
+    )
 if not torch.cuda.is_available():
-    raise SystemExit("CUDA device unavailable")
+    raise SystemExit(
+        f"PyTorch was built for CUDA {torch.version.cuda} but no usable GPU was found. "
+        "Check that nvidia-smi lists the GPU and that its 'CUDA Version' is at least "
+        f"{torch.version.cuda}."
+    )
 
 print("GPU:", torch.cuda.get_device_name(0))
 print("PyTorch:", torch.__version__)

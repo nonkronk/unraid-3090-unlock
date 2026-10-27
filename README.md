@@ -36,10 +36,19 @@ Look for `gpu_unlock: unlocked`; `nvidia-smi` alone does not confirm the unlock.
 
 ## RTX 3090 benchmark (350 W, median of 3 runs)
 
-| PyTorch 2.14.1+cu130 | GEMM throughput |
-| --- | ---: |
-| FP16 | **110.10 TFLOPS** |
-| BF16 | **112.50 TFLOPS** |
+| PyTorch 2.14.1+cu130 | Stock | Unlocked | Gain |
+| --- | ---: | ---: | ---: |
+| FP16 | 67.63 TFLOPS | **110.10 TFLOPS** | +63% |
+| BF16 | 68.31 TFLOPS | **112.50 TFLOPS** | +65% |
+
+Run it yourself, on Linux or Windows (including a VM with the GPU passed through):
+
+```bash
+python -m pip install -r bench/requirements.txt
+python bench/gemm.py
+```
+
+The requirements file pulls the CUDA build of PyTorch; plain `pip install torch` on Windows is CPU-only. Compare with the stock column above: about 68 TFLOPS means the GPU is still locked.
 
 ## Limitations
 
