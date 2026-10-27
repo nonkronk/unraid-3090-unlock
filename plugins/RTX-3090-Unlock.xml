@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<Plugin>
+  <Name>RTX 3090 Unlock</Name>
+  <Overview>Restores full-rate FP16/BF16 Tensor Core instruction issue on NVIDIA GA102/GA104 GPUs (tested on RTX 3090) by loading Zagitta's gpu_unlock module before the NVIDIA driver. Experimental: modifies boot options and loads a kernel module. Back up your boot flash first.</Overview>
+  <Description>Unraid packaging of [Zagitta's GPU Unlock](https://github.com/Zagitta/gpu-unlock). Tested on an RTX 3090 with Unraid 7.3.4 (kernel 6.18.58-Unraid); other GPUs and Unraid versions are experimental.
+
+- Requires the NVIDIA Driver plugin and a GA102 or GA104 GPU available to the host.
+- Ships one prebuilt GPL module for 6.18.58-Unraid; other kernels need a matching module staged before installation (see the project README).
+- Every download is SHA-256 verified. The installer never reboots the server or resets the GPU; restart when convenient.
+- On a kernel mismatch the plugin stays installed, loads the normal NVIDIA driver and shows a notification.
+- Uninstall restores the boot options it manages.
+
+Verify after reboot with `dmesg | grep -i gpu_unlock` (look for "gpu_unlock: unlocked"). No warranty; not affiliated with Unraid or NVIDIA.</Description>
+  <PluginURL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/RTX-3090-Unlock.plg</PluginURL>
+  <PluginAuthor>nonkronk</PluginAuthor>
+  <Support>https://github.com/nonkronk/unraid-3090-unlock/issues</Support>
+  <Project>https://github.com/nonkronk/unraid-3090-unlock</Project>
+  <ReadMe>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/README.md</ReadMe>
+  <Category>Drivers: Tools:System</Category>
+  <Beta>true</Beta>
+  <MinVer>7.3.4</MinVer>
+  <Icon>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/icon.svg</Icon>
+  <License>GPLv2</License>
+</Plugin>
