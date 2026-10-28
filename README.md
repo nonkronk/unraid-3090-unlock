@@ -1,3 +1,5 @@
+<img src="icon.svg" alt="" width="96" align="right">
+
 # GPU Unlock for Unraid
 
 An Unraid plugin for [Zagitta's GPU Unlock](https://github.com/Zagitta/gpu-unlock), which restores full-rate FP16/BF16 Tensor Core instruction issue on eligible NVIDIA Ampere GPUs. It runs before the NVIDIA driver.
