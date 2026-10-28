@@ -1,11 +1,14 @@
 <?xml version="1.0" standalone="yes"?>
 <PLUGIN name="RTX-3090-Unlock"
         author="nonkronk"
-        version="2026.10.25a"
+        version="2026.10.28"
         pluginURL="https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/RTX-3090-Unlock.plg"
         support="https://github.com/nonkronk/unraid-3090-unlock/issues"
-        icon="microchip">
+        icon="RTX-3090-Unlock.png">
   <CHANGES>
+    ###2026.10.28
+    - New plugin icon on the Plugins page.
+
     ###2026.10.25a
     - Never fail at boot on a GPU Unlock boot entry: fall back to normal NVIDIA, keep the plugin installed and show a notification (previously an Unraid upgrade could move the plugin to plugins-error and leave NVIDIA blacklisted).
     - SHA-256 verification for every download, so updates actually refresh the runtime scripts on the flash.
@@ -33,6 +36,60 @@
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/configure-boot.py">
     <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/2fe377515fc26ca8cb1ee3c7e281ecaf9f349483/runtime/configure-boot.py</URL>
     <SHA256>ee084d3458251c2bfffb30b6bd429a4609036200cc7c69aa3bc03ca9010841c3</SHA256>
+  </FILE>
+
+  <!-- Plugins page icon (RAM disk; recreated on every boot). -->
+  <FILE Name="/usr/local/emhttp/plugins/RTX-3090-Unlock/images/RTX-3090-Unlock.png" Type="base64">
+    <SHA256>e5e36b95af34fb040657d3bbbf38b4d5a93faa093c67f83b0b882d106807edb7</SHA256>
+    <INLINE>
+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
+    </INLINE>
   </FILE>
 
   <FILE Run="/bin/bash" Method="install">
@@ -109,6 +166,7 @@ if ! python3 "$root/runtime/configure-boot.py" --disable; then
   echo "RTX-3090-Unlock: uninstall refused; boot options were NOT changed" >&2
   exit 1
 fi
+rm -rf /usr/local/emhttp/plugins/RTX-3090-Unlock
 echo "RTX-3090-Unlock: boot options restored; no reboot was performed"
 exit 0
     ]]></INLINE>

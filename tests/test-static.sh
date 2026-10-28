@@ -14,14 +14,25 @@ assert root.attrib["name"] == "RTX-3090-Unlock"
 assert root.attrib["author"] == "nonkronk"
 # Unraid compares versions with strcmp: keep YYYY.MM.DD[letter].
 assert re.fullmatch(r"\d{4}\.\d{2}\.\d{2}[a-z]?", root.attrib["version"])
-assert root.attrib["icon"] == "microchip"
+assert root.attrib["icon"] == "RTX-3090-Unlock.png"
 # Unraid sorts .plg filenames at boot: unlock must precede nvidia-driver.plg.
 assert "RTX-3090-Unlock.plg" < "nvidia-driver.plg"
 assert root.attrib["pluginURL"].endswith("/RTX-3090-Unlock.plg")
 files = root.findall("FILE")
-downloads = [f for f in files if "Name" in f.attrib]
+named = [f for f in files if "Name" in f.attrib]
+downloads = [f for f in named if f.find("URL") is not None]
+inline = [f for f in named if f.find("INLINE") is not None]
 actions = [f for f in files if "Run" in f.attrib]
 assert len(downloads) == 4
+# Plugins page icon: decoded from inline base64 and pinned like the downloads.
+import base64, hashlib
+assert len(inline) == 1
+icon = inline[0]
+assert icon.attrib["Name"] == "/usr/local/emhttp/plugins/RTX-3090-Unlock/images/" + root.attrib["icon"]
+assert icon.attrib.get("Type") == "base64"
+png = base64.b64decode("".join(icon.findtext("INLINE").split()), validate=True)
+assert png.startswith(b"\x89PNG\r\n\x1a\n")
+assert hashlib.sha256(png).hexdigest() == icon.findtext("SHA256")
 assert all(f.findtext("URL", "").startswith("https://") for f in downloads)
 # Unraid only replaces an existing flash file when its SHA256 no longer matches.
 assert all(re.fullmatch(r"[0-9a-f]{64}", f.findtext("SHA256", "")) for f in downloads)
