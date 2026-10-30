@@ -32,16 +32,16 @@
     <SHA256>ec89b77b2bf2019654b822b84f7c5a8da446cd14cacd0a435ce781ccd4c74621</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/early-load.sh">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/2fe377515fc26ca8cb1ee3c7e281ecaf9f349483/runtime/early-load.sh</URL>
-    <SHA256>65647f1bb8672ad782d958babdec08ed478cffd9a28d7391b43035c519e35f47</SHA256>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/03a93e36d5e4b08cf33803bb934161c8e10a84d3/runtime/early-load.sh</URL>
+    <SHA256>309358bf9191ec51baf3298283310df183451590f678088959a5f76a1d87d80b</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/prepare-firmware.sh">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/2fe377515fc26ca8cb1ee3c7e281ecaf9f349483/runtime/prepare-firmware.sh</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/03a93e36d5e4b08cf33803bb934161c8e10a84d3/runtime/prepare-firmware.sh</URL>
     <SHA256>626d39dda9ecfadf0088387b317855a0526933bbfb4c4bae9c97352cc78bc0a6</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/configure-boot.py">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/2fe377515fc26ca8cb1ee3c7e281ecaf9f349483/runtime/configure-boot.py</URL>
-    <SHA256>ee084d3458251c2bfffb30b6bd429a4609036200cc7c69aa3bc03ca9010841c3</SHA256>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/03a93e36d5e4b08cf33803bb934161c8e10a84d3/runtime/configure-boot.py</URL>
+    <SHA256>ee43e75bf53bb35a0c91b8f8f8bb76ef4b1b657060ca273d143084983fd8ba79</SHA256>
   </FILE>
 
   <!-- Plugins page icon (RAM disk; recreated on every boot). -->
