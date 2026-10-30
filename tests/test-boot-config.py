@@ -105,14 +105,57 @@ class BootConfigurationTests(unittest.TestCase):
         self.assertIn("restored", boot.disable(self.cfg, self.plugin))
         self.assertEqual(self.cfg.read_text(), ORIGINAL)
 
-    def test_changed_boot_options_refuse_uninstall_without_disabling(self):
+    def test_user_added_parameter_survives_check_and_uninstall(self):
         boot.configure(self.cfg, self.sysfs, self.plugin)
-        changed = self.cfg.read_text().replace("mitigations=auto", "mitigations=off", 1)
+        text = self.cfg.read_text()
+        default_append = "gpu_unlock.targets=all"
+        changed = text.replace(default_append, default_append + " pcie_aspm=off", 1)
         self.cfg.write_text(changed)
-        with self.assertRaises(boot.SetupError):
-            boot.disable(self.cfg, self.plugin)
+        self.assertIn("already configured", boot.configure(self.cfg, self.sysfs, self.plugin))
         self.assertEqual(self.cfg.read_text(), changed)
-        self.assertTrue((self.plugin / "enabled").is_file())
+        self.assertIn("restored", boot.disable(self.cfg, self.plugin))
+        self.assertEqual(self.cfg.read_text(), ORIGINAL.replace(
+            "mitigations=auto\nlabel Unraid OS Safe Mode",
+            "mitigations=auto pcie_aspm=off\nlabel Unraid OS Safe Mode"))
+
+    def test_separate_blacklist_argument_is_kept_and_combined(self):
+        boot.configure(self.cfg, self.sysfs, self.plugin)
+        changed = self.cfg.read_text().replace(
+            "gpu_unlock.targets=all", "gpu_unlock.targets=all modprobe.blacklist=amdgpu", 1)
+        self.cfg.write_text(changed)
+        self.assertIn("already configured", boot.configure(self.cfg, self.sysfs, self.plugin))
+        boot.disable(self.cfg, self.plugin)
+        restored = self.cfg.read_text()
+        self.assertIn("modprobe.blacklist=acpi_cpufreq mitigations=auto modprobe.blacklist=amdgpu\n", restored)
+        self.assertNotIn("nvidia", restored)
+        self.assertNotIn("gpu_unlock", restored)
+
+    def test_edited_recovery_entry_is_still_removed(self):
+        boot.configure(self.cfg, self.sysfs, self.plugin)
+        changed = self.cfg.read_text().replace(
+            "label Unraid OS (No GPU Unlock)\n  kernel /bzimage\n  append initrd=/bzroot modprobe.blacklist=acpi_cpufreq mitigations=auto",
+            "label Unraid OS (No GPU Unlock)\n  kernel /bzimage\n  append initrd=/bzroot modprobe.blacklist=acpi_cpufreq mitigations=auto pcie_aspm=off", 1)
+        self.assertNotEqual(changed, self.cfg.read_text())
+        self.cfg.write_text(changed)
+        boot.disable(self.cfg, self.plugin)
+        self.assertEqual(self.cfg.read_text(), ORIGINAL)
+
+    def test_user_owned_nvidia_blacklist_is_preserved(self):
+        original = ORIGINAL.replace("modprobe.blacklist=acpi_cpufreq mitigations=auto",
+                                    "modprobe.blacklist=acpi_cpufreq,nvidia_drm mitigations=auto")
+        self.cfg.write_text(original)
+        boot.configure(self.cfg, self.sysfs, self.plugin)
+        changed = self.cfg.read_text().replace("gpu_unlock.targets=all", "gpu_unlock.targets=all quiet", 1)
+        self.cfg.write_text(changed)
+        boot.disable(self.cfg, self.plugin)
+        self.assertIn("modprobe.blacklist=acpi_cpufreq,nvidia_drm mitigations=auto quiet\n", self.cfg.read_text())
+
+    def test_removed_blacklist_fails_check_with_reason(self):
+        boot.configure(self.cfg, self.sysfs, self.plugin)
+        changed = self.cfg.read_text().replace(",nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm", "", 1)
+        self.cfg.write_text(changed)
+        with self.assertRaisesRegex(boot.SetupError, "modprobe.blacklist must include"):
+            boot.configure(self.cfg, self.sysfs, self.plugin)
 
     def test_missing_rollback_record_refuses_uninstall_without_disabling(self):
         (self.plugin / "enabled").touch()

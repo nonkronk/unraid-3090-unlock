@@ -68,5 +68,6 @@ source "$project_dir/runtime/early-load.sh"
 has_required_blacklist 'quiet modprobe.blacklist=nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm initrd=/bzroot'
 has_required_blacklist 'initrd=/bzroot modprobe.blacklist=acpi_cpufreq,nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm gpu_unlock.targets=0000:0a:00.0'
 ! has_required_blacklist 'modprobe.blacklist=nvidia,nvidia_drm,nvidia_modeset'
+has_required_blacklist 'modprobe.blacklist=amdgpu modprobe.blacklist=nvidia,nvidia_drm modprobe.blacklist=nvidia_modeset,nvidia_uvm'
 ! has_required_blacklist 'modprobe.blacklist=nouveau'
 echo 'Static, plugin, and offline boot-recovery checks passed (no GPU access).'

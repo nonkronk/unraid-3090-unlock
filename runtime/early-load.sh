@@ -20,19 +20,18 @@ log() {
   logger -t RTX-3090-Unlock -- "$*" 2>/dev/null || true
 }
 
+# modprobe combines every modprobe.blacklist= argument on the command line.
 has_required_blacklist() {
-  local cmdline="$1" option driver modules
+  local cmdline="$1" option driver modules=","
   local -a boot_words=()
   read -r -a boot_words <<< "$cmdline"
   for option in "${boot_words[@]}"; do
-    [[ "$option" == modprobe.blacklist=* ]] || continue
-    modules=",${option#modprobe.blacklist=},"
-    for driver in "${REQUIRED_AUTOLOAD_BLACKLIST[@]}"; do
-      [[ "$modules" == *",$driver,"* ]] || return 1
-    done
-    return 0
+    [[ "$option" == modprobe.blacklist=* ]] && modules+="${option#modprobe.blacklist=},"
   done
-  return 1
+  for driver in "${REQUIRED_AUTOLOAD_BLACKLIST[@]}"; do
+    [[ "$modules" == *",$driver,"* ]] || return 1
+  done
+  return 0
 }
 
 attempt_unlock() {
