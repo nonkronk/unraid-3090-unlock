@@ -1,11 +1,17 @@
 <?xml version="1.0" standalone="yes"?>
 <PLUGIN name="RTX-3090-Unlock"
         author="nonkronk"
-        version="2026.10.28"
+        version="2026.10.31"
         pluginURL="https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/RTX-3090-Unlock.plg"
         support="https://github.com/nonkronk/unraid-3090-unlock/issues"
         icon="RTX-3090-Unlock.png">
   <CHANGES>
+    ###2026.10.31
+    - Other boot parameters can now be added or changed freely: the plugin only checks and removes its own gpu_unlock.targets and NVIDIA blacklist entries.
+    - Uninstall keeps the rest of the current boot line instead of refusing when it changed.
+    - Separate modprobe.blacklist arguments are combined, as the kernel does.
+    - Boot-check notifications state the actual reason.
+
     ###2026.10.28
     - New plugin icon on the Plugins page.
 
@@ -104,13 +110,14 @@ notify=/usr/local/emhttp/webGui/scripts/notify
 # that restores the boot options would no longer be reachable.
 configured_boot=0
 grep -q 'gpu_unlock.targets=' /proc/cmdline 2>/dev/null && configured_boot=1
-warn() {
-  echo "$tag: $*" >&2
-  logger -t "$tag" -- "$*" 2>/dev/null || true
+notice() {  # notice SUBJECT MESSAGE
+  echo "$tag: $2" >&2
+  logger -t "$tag" -- "$2" 2>/dev/null || true
   if [ -x "$notify" ]; then
-    "$notify" -e "RTX 3090 Unlock" -s "GPU Unlock not active" -d "$*" -i warning >/dev/null 2>&1 || true
+    "$notify" -e "RTX 3090 Unlock" -s "$1" -d "$2" -i warning >/dev/null 2>&1 || true
   fi
 }
+warn() { notice "GPU Unlock not active" "$*"; }
 normal_driver() {
   if [ "$configured_boot" = 1 ] && [ ! -d /sys/module/nvidia ]; then
     modprobe nvidia || warn "NVIDIA fallback failed; boot the 'Unraid OS (No GPU Unlock)' entry or restore the Syslinux backup"
@@ -134,14 +141,22 @@ if [ ! -f "$root/runtime/prepare-firmware.sh" ] ||
    ! bash "$root/runtime/prepare-firmware.sh"; then
   give_up "local firmware setup failed; boot options not changed"
 fi
-if [ ! -f "$root/runtime/configure-boot.py" ] ||
-   ! python3 "$root/runtime/configure-boot.py"; then
+boot_status=0
+if [ -f "$root/runtime/configure-boot.py" ]; then
+  boot_output=$(python3 "$root/runtime/configure-boot.py" 2>&1) || boot_status=1
+  echo "$boot_output"
+else
+  boot_output="boot setup failed: configure-boot.py is missing"
+  boot_status=1
+fi
+if [ "$boot_status" != 0 ]; then
+  reason=${boot_output##*boot setup failed: }
+  reason=${reason:-unknown error}
   if [ "$configured_boot" = 1 ]; then
-    # Boot options were changed outside the plugin. Keep running so NVIDIA
-    # resumes; the uninstaller will refuse until they are reconciled.
-    warn "boot options differ from the recorded configuration; uninstall will refuse until they are restored"
+    # Keep running so the unlock and NVIDIA still start on this boot.
+    notice "Boot configuration check failed" "$reason. GPU Unlock still runs on this boot."
   else
-    give_up "boot configuration validation failed; boot options not changed"
+    give_up "boot configuration check failed: $reason; boot options not changed"
   fi
 fi
 if [ -f "$root/runtime/early-load.sh" ]; then
