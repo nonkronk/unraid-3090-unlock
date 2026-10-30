@@ -10,6 +10,7 @@ An Unraid plugin for [Zagitta's GPU Unlock](https://github.com/Zagitta/gpu-unloc
 
 - An NVIDIA GA102 or GA104 GPU. The included module is built from upstream commit `649b36c`, which recognizes only those two chips. [Current upstream](https://github.com/Zagitta/gpu-unlock#tested-cards) adds GA103 and GA106, but this plugin does not ship that build yet.
 - Unraid with the NVIDIA Driver plugin and a GPU available to the host.
+- The **Python 3 for UNRAID** plugin (Apps), used when installing and uninstalling. It is not needed during boot.
 - A `gpu_unlock.ko` module built for the **running Unraid kernel**.
 
 The plugin includes a prebuilt module for `6.18.58-Unraid` (Unraid 7.3.4). Other Unraid kernels can be tried with a matching source-built module.
