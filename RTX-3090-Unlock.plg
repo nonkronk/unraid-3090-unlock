@@ -1,11 +1,14 @@
 <?xml version="1.0" standalone="yes"?>
 <PLUGIN name="RTX-3090-Unlock"
         author="nonkronk"
-        version="2026.10.28"
+        version="2026.10.31b"
         pluginURL="https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/RTX-3090-Unlock.plg"
         support="https://github.com/nonkronk/unraid-3090-unlock/issues"
         icon="RTX-3090-Unlock.png">
   <CHANGES>
+    ###2026.10.31b
+    - Rolled back to the 2026.10.28 behavior (reverts 2026.10.31 and 2026.10.31a).
+
     ###2026.10.28
     - New plugin icon on the Plugins page.
 
