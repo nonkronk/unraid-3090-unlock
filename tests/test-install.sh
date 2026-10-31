@@ -48,16 +48,8 @@ run() {  # run CMDLINE [module present: 1/0]
     mkdir -p "$work/flash/payload/6.18.58-Unraid"
     echo ko > "$work/flash/payload/6.18.58-Unraid/gpu_unlock.ko"
   fi
-  local path="$work/bin:$PATH"
-  if [[ "${NO_PYTHON:-0}" == 1 ]]; then
-    # Stock Unraid at boot: no python3 anywhere on PATH.
-    rm -rf "$work/nopy"; mkdir -p "$work/nopy"
-    for command in bash grep cat; do ln -s "$(command -v "$command")" "$work/nopy/$command"; done
-    for command in modprobe logger notify uname modinfo; do ln -s "$work/bin/$command" "$work/nopy/$command"; done
-    path="$work/nopy"
-  fi
   set +e
-  PATH="$path" bash "$work/install.sh" 2>/dev/null
+  PATH="$work/bin:$PATH" bash "$work/install.sh" 2>/dev/null
   status=$?
   set -e
 }
@@ -91,17 +83,5 @@ run "$configured" 1
 [[ $status -eq 0 ]]
 grep -q early-load "$work/calls"
 ! grep -q '^notify ' "$work/calls"
-
-# Configured boot before the Python plugin has loaded: no warning, loader runs.
-NO_PYTHON=1 run "$configured" 1
-[[ $status -eq 0 ]]
-grep -q early-load "$work/calls"
-! grep -q '^notify ' "$work/calls"
-
-# Fresh install without Python: refuse with a notification, touch nothing.
-NO_PYTHON=1 run 'initrd=/bzroot' 1
-[[ $status -ne 0 ]]
-grep -q '^notify .*Python 3' "$work/calls"
-! grep -q early-load "$work/calls"
 
 echo 'Plugin install fail-safe checks passed (sandboxed).'

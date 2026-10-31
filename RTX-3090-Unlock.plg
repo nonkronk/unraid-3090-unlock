@@ -1,15 +1,11 @@
 <?xml version="1.0" standalone="yes"?>
 <PLUGIN name="RTX-3090-Unlock"
         author="nonkronk"
-        version="2026.10.31a"
+        version="2026.10.31"
         pluginURL="https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/main/RTX-3090-Unlock.plg"
         support="https://github.com/nonkronk/unraid-3090-unlock/issues"
         icon="RTX-3090-Unlock.png">
   <CHANGES>
-    ###2026.10.31a
-    - Fix "Boot configuration check failed: python3: command not found" on every boot. Stock Unraid has no Python and the Python plugin loads after this one; the boot check now leaves it to the early loader.
-    - Install and uninstall say clearly when the Python 3 plugin is needed.
-
     ###2026.10.31
     - Other boot parameters can now be added or changed freely: the plugin only checks and removes its own gpu_unlock.targets and NVIDIA blacklist entries.
     - Uninstall keeps the rest of the current boot line instead of refusing when it changed.
@@ -145,16 +141,8 @@ if [ ! -f "$root/runtime/prepare-firmware.sh" ] ||
    ! bash "$root/runtime/prepare-firmware.sh"; then
   give_up "local firmware setup failed; boot options not changed"
 fi
-python_hint="install 'Python 3 for UNRAID' from Apps, then try again"
-if [ "$configured_boot" = 0 ] && ! command -v python3 >/dev/null 2>&1; then
-  give_up "Python 3 is required to set up GPU Unlock: $python_hint"
-fi
 boot_status=0
-if ! command -v python3 >/dev/null 2>&1; then
-  # Stock Unraid has no Python; the Python plugin installs after this one at
-  # boot. The early loader checks the same boot arguments in bash.
-  echo "$tag: python3 not available yet; boot arguments are checked by the early loader"
-elif [ -f "$root/runtime/configure-boot.py" ]; then
+if [ -f "$root/runtime/configure-boot.py" ]; then
   boot_output=$(python3 "$root/runtime/configure-boot.py" 2>&1) || boot_status=1
   echo "$boot_output"
 else
@@ -187,10 +175,6 @@ root=/boot/config/plugins/RTX-3090-Unlock
 # Restore boot options first. Never unload/reset a live GPU.
 if [ ! -f "$root/runtime/configure-boot.py" ]; then
   echo "RTX-3090-Unlock: cannot safely uninstall: rollback helper missing" >&2
-  exit 1
-fi
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "RTX-3090-Unlock: uninstall needs Python 3 to restore boot options: install 'Python 3 for UNRAID' from Apps, then remove again" >&2
   exit 1
 fi
 if ! python3 "$root/runtime/configure-boot.py" --disable; then
