@@ -75,50 +75,17 @@ def find_append(lines: list[str], start: int, end: int) -> int:
     return matches[0]
 
 
-def blacklisted(options: str) -> list[str]:
-    """Every module named by any modprobe.blacklist= argument (modprobe combines them)."""
-    return [name for value in BLACKLIST_RE.findall(options) for name in value.split(",") if name]
-
-
-def strip_plugin_options(options: str, original: str) -> str:
-    """Remove only what the plugin added; keep every other argument as it is now."""
-    keep = set(blacklisted(original))
-    result = TARGET_RE.sub("", options)
-
-    def clean(match: re.Match) -> str:
-        names = [n for n in match.group(1).split(",")
-                 if n and (n not in DRIVER_IDS or n in keep)]
-        return "modprobe.blacklist=" + ",".join(names) if names else ""
-
-    return " ".join(BLACKLIST_RE.sub(clean, result).split())
-
-
-def remove_recovery(text: str, recovery: str) -> str:
-    """Remove the plugin's fallback entry, even if it was edited since install."""
-    if recovery and text.count(recovery) == 1:
-        return text.replace(recovery, "", 1)
-    lines = text.splitlines(keepends=True)
-    starts = [i for i, line in enumerate(lines)
-              if (m := LABEL_RE.match(line)) and m.group(1) == RECOVERY_LABEL]
-    if not starts:
-        return text
-    if len(starts) > 1:
-        raise SetupError(f"More than one '{RECOVERY_LABEL}' entry; remove the extras manually")
-    start = starts[0]
-    end = next((i for i in range(start + 1, len(lines)) if LABEL_RE.match(lines[i])), len(lines))
-    if start and not lines[start - 1].strip():
-        start -= 1
-    return "".join(lines[:start] + lines[end:])
-
-
 def merge_options(original: str, card: str) -> str:
     if TARGET_RE.search(original):
         raise SetupError("GPU Unlock target already configured; refusing duplicate modification")
     old = BLACKLIST_RE.findall(original)
+    if len(old) > 1:
+        raise SetupError("Multiple modprobe.blacklist arguments; edit manually")
     if old:
-        present = set(blacklisted(original))
         names = [name for name in old[0].split(",") if name]
-        names += [name for name in DRIVER_IDS if name not in present]
+        for name in DRIVER_IDS:
+            if name not in names:
+                names.append(name)
         updated = BLACKLIST_RE.sub("modprobe.blacklist=" + ",".join(names), original, count=1)
     else:
         updated = original + " modprobe.blacklist=" + ",".join(DRIVER_IDS)
@@ -175,15 +142,18 @@ def configure(cfg: Path, pci_root: Path, plugin_root: Path) -> str:
     if target:
         if len(target) != 1 or not configured_target_valid(target[0], cards):
             raise SetupError("Existing GPU Unlock target does not match host-managed NVIDIA GPUs")
-        if not all(n in blacklisted(options) for n in DRIVER_IDS):
-            raise SetupError("modprobe.blacklist must include " + ",".join(DRIVER_IDS))
+        names = BLACKLIST_RE.findall(options)
+        if len(names) != 1 or not all(n in names[0].split(",") for n in DRIVER_IDS):
+            raise SetupError("Existing GPU Unlock boot line lacks NVIDIA blacklist")
         marker = plugin_root / "enabled"
         record_file = plugin_root / "boot-setup.json"
         if record_file.is_file():
-            # Other boot parameters may change freely; only the plugin's own
-            # arguments (checked above) matter. Uninstall removes just those.
-            if "original_append" not in json.loads(record_file.read_text()):
-                raise SetupError("Rollback record is incomplete")
+            saved = json.loads(record_file.read_text())
+            if saved["configured_append"] != options:
+                raise SetupError("Current boot options differ from rollback record")
+            recovery = saved.get("recovery_block", "")
+            if recovery and "".join(lines).count(recovery) != 1:
+                raise SetupError("Recorded fallback boot entry changed")
             marker.touch(exist_ok=True)
             return "GPU Unlock boot entry already configured; left unchanged"
 
@@ -280,16 +250,16 @@ def disable(cfg: Path, plugin_root: Path) -> str:
     start, end = find_entry(lines, "Unraid OS")
     idx = find_append(lines, start, end)
     match = APPEND_RE.match(lines[idx])
-    if match is None:
-        raise SetupError("Missing Syslinux append")
-    options = match.group(2)
-    if options == saved.get("configured_append"):
-        normal = saved["original_append"]
-    else:
-        # Edited since install: keep the user's changes, drop only ours.
-        normal = strip_plugin_options(options, saved["original_append"])
-    lines[idx] = match.group(1) + normal + (match.group(3) or "\n")
-    restored = remove_recovery("".join(lines), saved.get("recovery_block", ""))
+    if match is None or match.group(2) != saved["configured_append"]:
+        raise SetupError("Uninstall refused: Syslinux boot options changed since install")
+    current = "".join(lines)
+    recovery = saved.get("recovery_block", "")
+    if recovery and current.count(recovery) != 1:
+        raise SetupError("Uninstall refused: fallback boot entry changed")
+    lines[idx] = match.group(1) + saved["original_append"] + (match.group(3) or "\n")
+    restored = "".join(lines)
+    if recovery:
+        restored = restored.replace(recovery, "", 1)
     # No runtime, VM, or GPU action. Restore the boot file first.
     write_atomic(cfg, restored)
     if marker.exists():
