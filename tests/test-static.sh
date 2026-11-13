@@ -23,7 +23,7 @@ named = [f for f in files if "Name" in f.attrib]
 downloads = [f for f in named if f.find("URL") is not None]
 inline = [f for f in named if f.find("INLINE") is not None]
 actions = [f for f in files if "Run" in f.attrib]
-assert len(downloads) == 4
+assert len(downloads) == 9
 # Plugins page icon: decoded from inline base64 and pinned like the downloads.
 import base64, hashlib
 assert len(inline) == 1
