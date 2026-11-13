@@ -26,7 +26,7 @@ if (( ready )); then
   exit 0
 fi
 
-for command in curl python3 zstd tar; do
+for command in python3 zstd tar; do
   command -v "$command" >/dev/null || {
     echo "RTX-3090-Unlock: missing required command: $command" >&2
     exit 1
@@ -40,11 +40,15 @@ scratch=$(mktemp -d /tmp/rtx-3090-unlock.XXXXXXXX)
 trap 'rm -r -- "$scratch"' EXIT
 mkdir -p "$scratch/upstream" "$scratch/assets"
 
-base="https://raw.githubusercontent.com/Zagitta/gpu-unlock/$UPSTREAM_COMMIT/firmware"
+# The plugin manager downloads these from Zagitta/gpu-unlock at $UPSTREAM_COMMIT
+# and checks each against the <SHA256> in RTX-3090-Unlock.plg. Copy them
+# together: the scripts read the manifest from their own directory.
 for name in fetch_artifacts.py generate_v67.py extract_boot_assets.py artifacts-610.43.03.json NOTICE.md; do
-  curl --fail --silent --show-error --location --retry 3 \
-    --proto '=https' --proto-redir '=https' \
-    --output "$scratch/upstream/$name" "$base/$name"
+  [[ -s "$CONFIG_ROOT/runtime/upstream/$name" ]] || {
+    echo "RTX-3090-Unlock: missing verified upstream file runtime/upstream/$name; reinstall the plugin" >&2
+    exit 1
+  }
+  cp "$CONFIG_ROOT/runtime/upstream/$name" "$scratch/upstream/$name"
 done
 
 python3 "$scratch/upstream/fetch_artifacts.py" "$scratch/inputs"

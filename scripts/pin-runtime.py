@@ -21,6 +21,8 @@ from pathlib import Path
 PROJECT = Path(__file__).resolve().parents[1]
 PLG = PROJECT / "RTX-3090-Unlock.plg"
 RAW = "https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/"
+# Upstream firmware tools: pinned to a fixed upstream commit, hashed by hand.
+UPSTREAM = "https://raw.githubusercontent.com/Zagitta/gpu-unlock/"
 FILE_RE = re.compile(r'(<FILE Name="[^"]+">\s*)(<URL>([^<]+)</URL>)(\s*<SHA256>[0-9a-f]{64}</SHA256>)?(\s*</FILE>)')
 
 
@@ -41,6 +43,8 @@ def main() -> int:
             path = url.split("/", 6)[6]
             url = RAW + commit + "/" + path
             digest = hashlib.sha256(git("show", f"{commit}:{path}")).hexdigest()
+        elif url.startswith(UPSTREAM) and match.group(4):
+            return match.group(0)
         elif url.endswith(".ko"):
             if args.module:
                 digest = hashlib.sha256(args.module.read_bytes()).hexdigest()
@@ -54,8 +58,8 @@ def main() -> int:
 
     text = PLG.read_text()
     updated, count = FILE_RE.subn(pin, text)
-    if count != 4:
-        print(f"expected 4 downloads, found {count}", file=sys.stderr)
+    if count != 9:
+        print(f"expected 9 downloads, found {count}", file=sys.stderr)
         return 1
     PLG.write_text(updated)
     print(f"Pinned runtime downloads to {commit}")

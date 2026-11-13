@@ -29,16 +29,38 @@
     <SHA256>ec89b77b2bf2019654b822b84f7c5a8da446cd14cacd0a435ce781ccd4c74621</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/early-load.sh">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/2fe377515fc26ca8cb1ee3c7e281ecaf9f349483/runtime/early-load.sh</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/fcb79175070bccf61f19b31935254871135fc5b4/runtime/early-load.sh</URL>
     <SHA256>65647f1bb8672ad782d958babdec08ed478cffd9a28d7391b43035c519e35f47</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/prepare-firmware.sh">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/2fe377515fc26ca8cb1ee3c7e281ecaf9f349483/runtime/prepare-firmware.sh</URL>
-    <SHA256>626d39dda9ecfadf0088387b317855a0526933bbfb4c4bae9c97352cc78bc0a6</SHA256>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/fcb79175070bccf61f19b31935254871135fc5b4/runtime/prepare-firmware.sh</URL>
+    <SHA256>0ef4d0c61139bafad871154b0ba994527e0d333348815e9acbbabeae464d3acb</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/configure-boot.py">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/2fe377515fc26ca8cb1ee3c7e281ecaf9f349483/runtime/configure-boot.py</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/fcb79175070bccf61f19b31935254871135fc5b4/runtime/configure-boot.py</URL>
     <SHA256>ee084d3458251c2bfffb30b6bd429a4609036200cc7c69aa3bc03ca9010841c3</SHA256>
+  </FILE>
+
+  <!-- Upstream firmware tools, pinned to Zagitta/gpu-unlock 649b36c; runtime/prepare-firmware.sh runs these verified copies. -->
+  <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/upstream/fetch_artifacts.py">
+    <URL>https://raw.githubusercontent.com/Zagitta/gpu-unlock/649b36c27178fdf9fcaafd767d60dfbb78b6caa2/firmware/fetch_artifacts.py</URL>
+    <SHA256>5655e3e497b16e17e3a9c307cf733ef2207cd7a3d0be5a9d0b2c532d66abe76b</SHA256>
+  </FILE>
+  <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/upstream/generate_v67.py">
+    <URL>https://raw.githubusercontent.com/Zagitta/gpu-unlock/649b36c27178fdf9fcaafd767d60dfbb78b6caa2/firmware/generate_v67.py</URL>
+    <SHA256>4b41e5199c6b9968d134c43a5a42d8127d094eebfe9dca78204be4d7c8237fd0</SHA256>
+  </FILE>
+  <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/upstream/extract_boot_assets.py">
+    <URL>https://raw.githubusercontent.com/Zagitta/gpu-unlock/649b36c27178fdf9fcaafd767d60dfbb78b6caa2/firmware/extract_boot_assets.py</URL>
+    <SHA256>7acc5f488cd35700c499bc942a07e7d0d9b0822b1e2ad040cd34bacf99fa5986</SHA256>
+  </FILE>
+  <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/upstream/artifacts-610.43.03.json">
+    <URL>https://raw.githubusercontent.com/Zagitta/gpu-unlock/649b36c27178fdf9fcaafd767d60dfbb78b6caa2/firmware/artifacts-610.43.03.json</URL>
+    <SHA256>766be4acb90a9ce2448adc3eb4cead81ea142e96b614f30bde1600b74fe5a4bc</SHA256>
+  </FILE>
+  <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/upstream/NOTICE.md">
+    <URL>https://raw.githubusercontent.com/Zagitta/gpu-unlock/649b36c27178fdf9fcaafd767d60dfbb78b6caa2/firmware/NOTICE.md</URL>
+    <SHA256>56c8d56ca47d705de6c68a62630d42115040ab47f94fb93ca37ba74a428cb875</SHA256>
   </FILE>
 
   <!-- Plugins page icon (RAM disk; recreated on every boot). -->
