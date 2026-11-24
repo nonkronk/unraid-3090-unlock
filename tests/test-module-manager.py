@@ -107,14 +107,40 @@ def main() -> int:
             assert error.code == mm.EXIT_QUARANTINED
         print("ok: ensure() refuses a module that is quarantined after a failed boot")
 
-        # 9. prefetch() is a no-op (not an error) when no update is pending.
+        # 9. ensure() must also refuse an EXISTING, vermagic-matching module
+        #    if it is quarantined -- not just a module it would otherwise
+        #    fetch fresh. Before this fix, a module already staged on disk
+        #    short-circuited straight to "already present" without ever
+        #    consulting the quarantine file, so a quarantined module that
+        #    hung one boot would be reloaded (and could hang again) on
+        #    every boot after the one that quarantined it.
+        root2 = work / "root2"
+        module_path = root2 / "payload" / "6.18.58-Unraid" / "gpu_unlock.ko"
+        module_path.parent.mkdir(parents=True)
+        module_path.write_bytes(b"pretend module bytes; no real modinfo in this sandbox")
+        existing_digest = mm.file_sha256(module_path)
+        (root2 / "quarantine").mkdir()
+        (root2 / "quarantine" / "6.18.58-Unraid").write_text(existing_digest)
+        original_matches = mm.module_matches_kernel
+        mm.module_matches_kernel = lambda path, kernel: True  # stand in for a real vermagic match
+        try:
+            try:
+                mm.ensure("6.18.58-Unraid", root2, str(manifest_path), 5)
+                raise AssertionError("an existing quarantined module should not have been accepted")
+            except mm.ModuleError as error:
+                assert error.code == mm.EXIT_QUARANTINED, f"expected EXIT_QUARANTINED, got {error.code}"
+        finally:
+            mm.module_matches_kernel = original_matches
+        print("ok: ensure() refuses an existing, vermagic-matching module that is quarantined")
+
+        # 10. prefetch() is a no-op (not an error) when no update is pending.
         running = "6.18.58-Unraid"
         image.write_bytes(make_bzimage(running))
         kernel, message = mm.prefetch(running, image, root, str(manifest_path), 5)
         assert kernel == "" and "no Unraid update" in message
         print("ok: prefetch() is a quiet no-op when the staged kernel matches the running one")
 
-        # 10. module_matches_kernel() / vermagic() never raise when modinfo
+        # 11. module_matches_kernel() / vermagic() never raise when modinfo
         #     is missing or the file isn't really a module -- just report "no match".
         fake_bin = work / "nope.ko"
         fake_bin.write_bytes(b"not a module")

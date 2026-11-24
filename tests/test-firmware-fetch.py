@@ -193,6 +193,31 @@ def extract_member(path, name):
         assert "staged file" in label
         print("ok: obtain() prefers and uses a staged local file over any remote source")
 
+        # 8. A malformed package source (e.g. an HTML placeholder page served
+        #    where a .pkg.tar.zst used to be) raises tarfile.TarError from the
+        #    vendored, unmodified upstream.extract_member() -- not SourceError,
+        #    OSError, or ValueError. obtain() must still treat it as one failed
+        #    attempt and move on to the next source, not crash outright.
+        bad_pkg_dir = work / "fallthrough-staged"
+        bad_pkg_dir.mkdir()
+        (bad_pkg_dir / "nvidia-utils-1-bad.pkg.tar.zst").write_bytes(
+            b"<html><head><title>Welcome to our server</title></head></html>")
+        good_pkg_path = bad_pkg_dir / "nvidia-utils-2-good.pkg.tar.zst"
+        good_pkg_path.write_bytes(make_tar({
+            "usr/lib/firmware/nvidia/610.43.03/gsp_ga10x.bin": gsp_bytes,
+            "usr/share/licenses/nvidia-utils/LICENSE": license_bytes,
+        }))
+        try:
+            fetch_firmware.from_package(bad_pkg_dir / "nvidia-utils-1-bad.pkg.tar.zst", upstream, notice)
+            raise AssertionError("an HTML placeholder package was accepted or silently ignored")
+        except tarfile.TarError:
+            pass  # confirms the bare, uncaught exception type obtain() must handle
+        gsp4, lic4, label4 = fetch_firmware.obtain(
+            upstream, notice, license_hashes, bad_pkg_dir, work, timeout=1, max_seconds=30)
+        assert gsp4 == gsp_bytes and lic4 == license_bytes
+        assert "2-good" in label4, f"expected the second (good) source to win, got {label4!r}"
+        print("ok: obtain() skips a malformed package source (tarfile.TarError) and uses the next one")
+
     finally:
         shutil.rmtree(work, ignore_errors=True)
 

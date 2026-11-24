@@ -293,7 +293,16 @@ def obtain(upstream, notice: dict, license_hashes: set[str], local_dir: Path | N
         log(f"trying {label}")
         try:
             gsp, license_text = attempt()
-        except (SourceError, OSError, ValueError) as error:
+        # tarfile.TarError (e.g. tarfile.ReadError) is not an OSError/ValueError
+        # subclass. from_run() already converts it to SourceError internally
+        # via members_from_run(), but from_package() calls the vendored,
+        # unmodified upstream.extract_member() directly, which can raise it
+        # bare -- for example when a source serves an HTML placeholder page
+        # for a removed package (a 200 status, not a 404) and zstd/tarfile
+        # then fail to parse it as an archive. Catch it here too, so a single
+        # malformed source is treated like any other failed attempt and the
+        # next source is still tried, instead of this function crashing.
+        except (SourceError, OSError, ValueError, tarfile.TarError) as error:
             problems.append(f"{label}: {error}")
             log(f"failed: {error}")
             continue

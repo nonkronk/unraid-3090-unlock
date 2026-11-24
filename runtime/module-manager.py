@@ -155,6 +155,11 @@ def ensure(kernel: str, root: Path, manifest_location: str, timeout: int) -> str
     module = root / "payload" / kernel / "gpu_unlock.ko"
     if module.is_file() and module.stat().st_size > 0:
         if module_matches_kernel(module, kernel):
+            digest = file_sha256(module)
+            if quarantined(root, kernel, digest):
+                raise ModuleError(
+                    f"the {kernel} module was disabled after a boot that did not finish; "
+                    f"delete {root}/quarantine/{kernel} to try it again", EXIT_QUARANTINED)
             return f"module for {kernel} already present"
         log(f"module for {kernel} is present but its vermagic does not match; looking for a replacement")
     manifest = load_manifest(manifest_location, timeout)
