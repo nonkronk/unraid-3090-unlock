@@ -73,7 +73,7 @@ def payload_offset(buffer: bytes) -> int | None:
     The header names the payload start as a line number (skip=N). Returns None
     when the buffer does not yet contain that many lines.
     """
-    if not buffer.startswith(b"#!/bin/sh"):
+    if not re.match(rb"#!\s*/bin/sh\s*\n", buffer):
         raise SourceError("not an NVIDIA .run installer (unexpected first line)")
     match = re.search(rb"^skip=(\d+)$", buffer[:8192], re.M)
     if not match:
