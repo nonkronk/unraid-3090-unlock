@@ -27,7 +27,7 @@ if git("rev-parse", "--is-shallow-repository").stdout.strip() == b"true":
 
 text = (project / "RTX-3090-Unlock.plg").read_text()
 pins = re.findall(r"<URL>" + re.escape(RAW) + r"([0-9a-f]{40})/([^<]+)</URL>\s*<SHA256>([0-9a-f]{64})</SHA256>", text)
-assert len(pins) == 3, f"expected 3 pinned runtime files, found {len(pins)}"
+assert len(pins) == 10, f"expected 10 pinned runtime files, found {len(pins)}"
 for commit, path, digest in pins:
     if git("merge-base", "--is-ancestor", commit, "HEAD", check=False).returncode != 0:
         sys.exit(f"{path}: pinned commit {commit} is not reachable from HEAD")

@@ -20,6 +20,18 @@ log() {
   logger -t RTX-3090-Unlock -- "$*" 2>/dev/null || true
 }
 
+module_is_quarantined() {
+  # Pure/testable: a module digest written to QUARANTINE_FILE by an earlier
+  # boot that never returned control (see attempt_unlock()) stays refused
+  # until the file is removed or a different module (different digest) is
+  # staged -- regardless of whether this boot is fetching that module fresh
+  # or it was already staged and vermagic-matched the running kernel.
+  local quarantine_file="$1" digest="$2" quarantined_digest=""
+  [[ -n "$digest" && -s "$quarantine_file" ]] || return 1
+  quarantined_digest=$(< "$quarantine_file") || return 1
+  [[ "$quarantined_digest" == "$digest" ]]
+}
+
 has_required_blacklist() {
   local cmdline="$1" option driver modules
   local -a boot_words=()
@@ -92,6 +104,36 @@ attempt_unlock() {
     return 0
   fi
 
+  # Boot-health check: if an earlier boot started loading this exact module
+  # and the marker below was never cleared, that boot did not return control
+  # to this script -- a hang or crash, not an ordinary load failure (which
+  # does return control, and is handled by the safeguards above instead).
+  # Refuse to repeat it and quarantine it for module-manager.py, same as any
+  # other reason to skip the unlock this boot.
+  local attempted="$payload/.unlock-attempted" quarantine="$CONFIG_ROOT/quarantine/$kernel" digest=""
+  if command -v sha256sum >/dev/null 2>&1; then
+    digest=$(sha256sum "$module" 2>/dev/null | cut -d' ' -f1) || digest=""
+  fi
+  # A quarantine written on an earlier boot persists across reboots (unlike
+  # the same-boot-cycle marker below): refuse this exact module until the
+  # marker is removed or a different module (a different digest) is staged.
+  if module_is_quarantined "$quarantine" "$digest"; then
+    log "this module is quarantined after a boot that did not finish; resuming normal NVIDIA (remove $quarantine to retry)"
+    return 0
+  fi
+  if [[ -n "$digest" && -s "$attempted" ]]; then
+    local previous
+    previous=$(< "$attempted") || previous=""
+    if [[ "$previous" == "$digest" ]]; then
+      log "a previous boot did not finish loading this module; quarantining it and resuming normal NVIDIA"
+      mkdir -p "$CONFIG_ROOT/quarantine" 2>/dev/null &&
+        printf '%s' "$digest" > "$CONFIG_ROOT/quarantine/$kernel" 2>/dev/null
+      rm -f "$attempted" 2>/dev/null
+      return 0
+    fi
+    rm -f "$attempted" 2>/dev/null  # stale marker for a module that has since changed
+  fi
+
   # All safeguards satisfied: stage only this kernel's prebuilt module/firmware.
   mkdir -p "/lib/modules/$kernel/extra" "/lib/firmware/gpu-unlock/$FIRMWARE_VERSION" || return 1
   install -m 0644 "$module" "/lib/modules/$kernel/extra/gpu_unlock.ko" || return 1
@@ -100,7 +142,13 @@ attempt_unlock() {
   done
   depmod -a "$kernel" || return 1
   log "loading gpu_unlock for upstream-eligible targets $parameter before NVIDIA"
-  modprobe gpu_unlock "targets=$parameter" || return 1
+  [[ -n "$digest" ]] && printf '%s' "$digest" > "$attempted" 2>/dev/null
+  local load_status=0
+  modprobe gpu_unlock "targets=$parameter" || load_status=1
+  # Reaching this line proves the previous command returned control (no hang
+  # or crash), whatever it returned, so the marker's job is done either way.
+  rm -f "$attempted" 2>/dev/null
+  [[ "$load_status" -eq 0 ]] || return 1
   log "module loaded; check dmesg to determine whether unlock succeeded"
 }
 

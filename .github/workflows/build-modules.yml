@@ -1,0 +1,134 @@
+name: Build and publish gpu_unlock modules
+
+# Builds gpu_unlock.ko for every (Unraid version, kernel release) pair listed
+# in modules-matrix.json, using the same scripts/build-local.sh a developer
+# would run by hand (clone pinned upstream -> recover the official Unraid
+# kernel config -> build -> metadata-check, no GPU/hardware access). On
+# success it publishes every module plus a modules.json manifest to the
+# "modules" GitHub Release, in the schema runtime/module-manager.py expects
+# (DEFAULT_MANIFEST). This is how a user's plugin auto-fetches a matching
+# module after an Unraid kernel upgrade with nothing prebuilt on the flash.
+#
+# A module published here is build-only and metadata-checked (vermagic,
+# ELF header, firmware/license presence) -- never hardware-tested in CI.
+# modules-matrix.json's own "status" field says which kernels have actually
+# been confirmed on real hardware; that field is carried into modules.json
+# unchanged so module-manager.py's "ensure" can report it.
+
+"on":
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - modules-matrix.json
+      - .github/workflows/build-modules.yml
+
+permissions:
+  contents: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.read.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - id: read
+        run: echo "matrix=$(jq -c '.kernels' modules-matrix.json)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        kernel: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends \
+            build-essential bc flex bison libelf-dev libssl-dev \
+            squashfs-tools kmod binutils jq curl unzip
+
+      - name: Build (scripts/build-local.sh)
+        run: |
+          bash scripts/build-local.sh /tmp/work \
+            "${{ matrix.kernel.unraid_version }}" "${{ matrix.kernel.kernel_release }}"
+
+      - name: Stage module + metadata for the publish job
+        run: |
+          kernel="${{ matrix.kernel.kernel_release }}"
+          module="/tmp/work/artifact/flash/config/plugins/RTX-3090-Unlock/payload/$kernel/gpu_unlock.ko"
+          [[ -s "$module" ]] || { echo "build produced no module" >&2; exit 1; }
+          sha256=$(sha256sum "$module" | cut -d' ' -f1)
+          mkdir -p /tmp/out
+          cp "$module" "/tmp/out/gpu_unlock-$kernel.ko"
+          jq -n --arg kernel "$kernel" --arg sha256 "$sha256" --arg status "${{ matrix.kernel.status }}" \
+            '{kernel: $kernel, sha256: $sha256, status: $status, asset: ("gpu_unlock-" + $kernel + ".ko")}' \
+            > "/tmp/out/gpu_unlock-$kernel.json"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: module-${{ matrix.kernel.kernel_release }}
+          path: /tmp/out/*
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/modules
+          merge-multiple: true
+
+      - name: Assemble modules.json
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          modules = {}
+          for meta_path in sorted(Path("/tmp/modules").glob("*.json")):
+              meta = json.loads(meta_path.read_text())
+              modules[meta["kernel"]] = {
+                  "url": (
+                      "https://github.com/${{ github.repository }}"
+                      f"/releases/download/modules/{meta['asset']}"
+                  ),
+                  "sha256": meta["sha256"],
+                  "status": meta["status"],
+              }
+          manifest = {"schema": 1, "modules": modules}
+          Path("/tmp/modules/modules.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          print(json.dumps(manifest, indent=2))
+          PY
+
+      - name: Publish/update the "modules" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          repo="${{ github.repository }}"
+          if ! gh release view modules --repo "$repo" >/dev/null 2>&1; then
+            gh release create modules --repo "$repo" \
+              --title "gpu_unlock prebuilt modules" \
+              --notes "Prebuilt gpu_unlock.ko files for Unraid kernels, auto-fetched by runtime/module-manager.py. Rebuilt by .github/workflows/build-modules.yml from modules-matrix.json; see that file for which kernels are hardware-confirmed vs. build-only."
+          fi
+          shopt -s nullglob
+          assets=(/tmp/modules/*.ko /tmp/modules/modules.json)
+          gh release upload modules --repo "$repo" --clobber "${assets[@]}"

@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "comment": "Each entry is built by .github/workflows/build-modules.yml via scripts/build-local.sh and published to the 'modules' GitHub Release as modules.json, in the schema runtime/module-manager.py expects. Add a new entry here (and open a PR) for each new Unraid kernel release you want a prebuilt module for; status 'supported' means it has been validated on real hardware, 'build-only' means CI built and metadata-checked it but nobody has booted it on a real RTX 3090/GA102 card yet.",
+  "kernels": [
+    {
+      "unraid_version": "7.3.4",
+      "kernel_release": "6.18.58-Unraid",
+      "status": "supported"
+    }
+  ]
+}

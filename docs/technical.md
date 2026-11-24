@@ -12,10 +12,25 @@
 | NVIDIA firmware source version | 610.43.03 |
 
 The plugin downloads a prebuilt **GPL** module for this exact kernel.
-To avoid distributing NVIDIA blobs, it executes upstream's pinned
-firmware download and extraction scripts **on the user's host**.
-That installation uses Python 3, zstd, curl and tar. Scripts refuse to
-configure boot until the module and firmware have been prepared.
+To avoid distributing NVIDIA blobs, it extracts the pinned firmware
+**on the user's host**, from NVIDIA's own files, never from a copy this
+repository hosts. `vendor/zagitta-firmware/` carries unmodified copies of
+upstream's firmware-generation scripts (`generate_v67.py`,
+`artifacts-610.43.03.json`, `extract_boot_assets.py`) plus `fetch_artifacts.py`,
+each covered by Unraid's own `<FILE>` SHA-256 pinning so install-time
+integrity does not depend on fetching them live from another repository
+(see `vendor/zagitta-firmware/PROVENANCE.md`). `runtime/fetch-firmware.py`
+tries, in order, a file staged by the user, NVIDIA's own `.run` installer
+(two mirrors), CachyOS's package, then Arch Linux's package archive --
+every source verified by the SHA-256 of the *extracted* bytes, never by
+HTTP status or a whole-file hash that only one specific build would match
+(one upstream mirror now serves an HTML page with a 200 status for the
+file it removed, which is exactly the failure mode that hash-only trust
+catches and an HTTP-status check would not). That installation uses
+Python 3, zstd, curl and tar; `runtime/prepare-firmware.sh` preflights all
+of them, plus free space and DNS, before attempting anything. Scripts
+refuse to configure boot until the module and firmware have been
+prepared.
 
 Unraid plugin source: `RTX-3090-Unlock.plg`.
 Early loader: `runtime/early-load.sh`.
@@ -47,9 +62,43 @@ driver reporting CUDA 13.0 or newer), then run `python bench/gemm.py`. It uses
 8192x8192 GEMM, 15 matmul operations per round, 3 rounds, and explicit FP32
 accumulation. The script refuses a CPU-only PyTorch build with instructions.
 
+## Published modules
+
+After an Unraid kernel upgrade, if no module is staged for the new
+`uname -r`, the install script and `runtime/early-load.sh` try
+`runtime/module-manager.py ensure --kernel <release>` before giving up.
+It downloads `modules.json` from this repository's `modules` GitHub
+Release (`DEFAULT_MANIFEST` in `module-manager.py`), looks up the running
+kernel, and only accepts a module whose SHA-256 matches the manifest entry
+*and* whose own `modinfo -F vermagic` reports that exact kernel. Exit codes:
+`0` ready, `3` kernel not in the manifest, `4` network/verification
+failure, `5` quarantined (see below), `1` other error -- all of which fall
+through to the existing "never fail at boot" path and a normal NVIDIA load.
+
+`modules.json` is rebuilt by `.github/workflows/build-modules.yml` from
+`modules-matrix.json`, which lists every `(unraid_version, kernel_release)`
+pair to build and whether it has been confirmed on real hardware
+(`"supported"`) or is CI-built and metadata-checked only
+(`"build-only"` -- see `tests/test-payload.sh`). Add a kernel there and
+open a PR to get a module published for it; the workflow runs on
+`workflow_dispatch` or when that file changes on `main`, using the same
+`scripts/build-local.sh` pipeline described above, so it never touches a
+GPU or needs Unraid hardware.
+
+If a boot attempt to load a module never returns control (a hang or crash
+rather than a clean failure), `runtime/early-load.sh` detects the stale
+marker it wrote before the `modprobe` call on the *next* boot, writes that
+module's SHA-256 to `<plugin>/quarantine/<kernel>`, and falls back to
+normal NVIDIA instead of retrying the same module forever. `ensure`
+refuses a quarantined digest (exit `5`) until the marker file is removed
+or a different module (a different SHA-256) is staged or published.
+
 ## Build for another Unraid kernel
 
-Use the same Linux x86-64 build dependencies listed above. Determine the
+Building and staging a module yourself is still useful for a kernel that
+is not in `modules-matrix.json` yet, or to validate one locally before
+proposing it there. Use the same Linux x86-64 build dependencies listed
+above. Determine the
 target server's Unraid version and its exact `uname -r`, then run:
 
 ```bash
@@ -124,6 +173,13 @@ python3 scripts/pin-runtime.py <merged-commit-on-main> [--module path/to/release
 then bump the plugin `version` (`YYYY.MM.DD` plus an optional letter; Unraid
 compares with `strcmp`) and commit. `tests/test-pins.py` fails CI if a pinned
 commit is not reachable from `HEAD` or a hash does not match.
+
+`.github/workflows/check-pinned-urls.yml` runs weekly (and on
+`workflow_dispatch`) and calls `runtime/fetch-firmware.py` against the real
+network -- the exact code path a fresh install uses, not a separate probe
+that could drift from it -- opening a GitHub issue if every source fails
+and closing it automatically once one works again. This is how the next
+removed/moved mirror gets caught before a user's install does.
 
 ## Licensing
 

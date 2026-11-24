@@ -23,7 +23,7 @@ named = [f for f in files if "Name" in f.attrib]
 downloads = [f for f in named if f.find("URL") is not None]
 inline = [f for f in named if f.find("INLINE") is not None]
 actions = [f for f in files if "Run" in f.attrib]
-assert len(downloads) == 4
+assert len(downloads) == 11
 # Plugins page icon: decoded from inline base64 and pinned like the downloads.
 import base64, hashlib
 assert len(inline) == 1
@@ -64,9 +64,26 @@ grep -qx "torch" "$project_dir/bench/requirements.txt"
 python3 "$project_dir/tests/test-boot-config.py"
 bash "$project_dir/tests/test-install.sh"
 python3 "$project_dir/tests/test-pins.py"
+python3 "$project_dir/tests/test-module-manager.py"
+if command -v zstd >/dev/null 2>&1; then
+  python3 "$project_dir/tests/test-firmware-fetch.py"
+else
+  echo "note: zstd not installed; firmware-fetch offline tests skipped"
+fi
 source "$project_dir/runtime/early-load.sh"
 has_required_blacklist 'quiet modprobe.blacklist=nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm initrd=/bzroot'
 has_required_blacklist 'initrd=/bzroot modprobe.blacklist=acpi_cpufreq,nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm gpu_unlock.targets=0000:0a:00.0'
 ! has_required_blacklist 'modprobe.blacklist=nvidia,nvidia_drm,nvidia_modeset'
 ! has_required_blacklist 'modprobe.blacklist=nouveau'
+
+quarantine_test_dir=$(mktemp -d)
+trap 'rm -rf -- "$quarantine_test_dir"' EXIT
+printf 'abc123' > "$quarantine_test_dir/quarantined-kernel"
+module_is_quarantined "$quarantine_test_dir/quarantined-kernel" 'abc123'
+! module_is_quarantined "$quarantine_test_dir/quarantined-kernel" 'def456'
+! module_is_quarantined "$quarantine_test_dir/no-such-file" 'abc123'
+! module_is_quarantined "$quarantine_test_dir/quarantined-kernel" ''
+rm -rf -- "$quarantine_test_dir"
+trap - EXIT
+
 echo 'Static, plugin, and offline boot-recovery checks passed (no GPU access).'

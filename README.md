@@ -55,7 +55,8 @@ The requirements file pulls the CUDA build of PyTorch; plain `pip install torch`
 ## Limitations
 
 - **Sleep/suspend:** the included module does not re-unlock after suspend to RAM (for example with the S3 Sleep plugin). After resume the GPU runs at the normal locked rate until the next reboot.
-- **Unraid OS updates:** a new kernel needs a new module. Until one is staged, the plugin stays installed, loads the normal NVIDIA driver and shows a *GPU Unlock not active* notification.
+- **Unraid OS updates:** a new kernel needs a matching module. At boot, the plugin first tries to fetch and verify one for the running kernel from this project's published module manifest (see [Technical details](docs/technical.md#published-modules)); if none is published yet, or the module ever fails to finish loading, it falls back to the normal NVIDIA driver and shows a *GPU Unlock not active* notification instead of leaving the boot entry unusable.
+- **NVIDIA driver version:** unrelated to the above. The plugin extracts one pinned firmware blob from an NVIDIA release purely as a source of bytes (nothing from it is installed or run); it does not require, install, or pin the NVIDIA driver version actually running on your server, which stays entirely managed by the NVIDIA Driver plugin.
 
 ## Uninstall
 
