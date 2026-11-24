@@ -64,6 +64,12 @@ grep -qx "torch" "$project_dir/bench/requirements.txt"
 python3 "$project_dir/tests/test-boot-config.py"
 bash "$project_dir/tests/test-install.sh"
 python3 "$project_dir/tests/test-pins.py"
+python3 "$project_dir/tests/test-module-manager.py"
+if command -v zstd >/dev/null 2>&1; then
+  python3 "$project_dir/tests/test-firmware-fetch.py"
+else
+  echo "note: zstd not installed; firmware-fetch offline tests skipped"
+fi
 source "$project_dir/runtime/early-load.sh"
 has_required_blacklist 'quiet modprobe.blacklist=nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm initrd=/bzroot'
 has_required_blacklist 'initrd=/bzroot modprobe.blacklist=acpi_cpufreq,nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm gpu_unlock.targets=0000:0a:00.0'
