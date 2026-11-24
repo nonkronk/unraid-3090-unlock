@@ -34,7 +34,25 @@ fi
 
 mkdir -p "$output_dir"
 cache="$output_dir/cache"
-make -C "$source_dir" assets CACHE="$cache"
+vendor="$project_dir/vendor/zagitta-firmware"
+mkdir -p "$cache"
+
+# NOTE: deliberately not `make -C "$source_dir" assets`. That upstream target
+# (via firmware/fetch_artifacts.py's own CLI) fetches the NVIDIA kernel
+# module source archive AND the nvidia-utils package in one unconditional
+# loop and aborts if either fails -- and the package's one pinned mirror
+# (archive.cachyos.org) no longer serves it. Only the source archive is
+# actually needed here; the GSP firmware + license come from
+# runtime/fetch-firmware.py's independent multi-source fallback instead, the
+# same as runtime/prepare-firmware.sh uses at install time.
+python3 "$project_dir/runtime/fetch-firmware.py" source \
+  --upstream "$vendor" --out "$cache/inputs"
+tar -xf "$cache/inputs/NVIDIA-kernel-module-source-610.43.03.tar.xz" -C "$cache"
+python3 "$vendor/extract_boot_assets.py" \
+  "$cache/NVIDIA-kernel-module-source-610.43.03" "$cache/assets"
+python3 "$project_dir/runtime/fetch-firmware.py" firmware \
+  --upstream "$vendor" --out "$cache/assets" --work "$cache/work"
+
 make -C "$source_dir/kernel/gpu_unlock" KDIR="$kernel_build" all
 
 flash="$output_dir/flash"
@@ -51,7 +69,7 @@ done
 install -m 0755 "$project_dir/runtime/early-load.sh" "$config/runtime/early-load.sh"
 install -m 0644 "$project_dir/RTX-3090-Unlock.plg" "$flash/config/plugins/RTX-3090-Unlock.plg"
 install -m 0644 "$cache/assets/NVIDIA-LICENSE" "$payload/NVIDIA-LICENSE"
-install -m 0644 "$source_dir/firmware/NOTICE.md" "$payload/FIRMWARE-NOTICE.md"
+install -m 0644 "$vendor/NOTICE.md" "$payload/FIRMWARE-NOTICE.md"
 
 command -v modinfo >/dev/null 2>&1 || { echo "modinfo is required for build validation" >&2; exit 1; }
 vermagic=$(modinfo -F vermagic "$payload/gpu_unlock.ko")

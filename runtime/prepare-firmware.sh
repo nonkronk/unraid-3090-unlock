@@ -69,8 +69,17 @@ mkdir -p "$scratch/upstream" "$scratch/assets"
 # This source archive is a normal NVIDIA download (not the removed CachyOS
 # package) and has no known outage as of this writing; it is still verified
 # against the pinned SHA-256 either way.
+#
+# NOTE: vendor/zagitta-firmware/fetch_artifacts.py's own CLI (main()) always
+# fetches BOTH pinned inputs -- this source archive AND the now-dead CachyOS
+# nvidia-utils package -- in one loop, and aborts the moment either one
+# fails. Calling it directly here would therefore always fail, even though
+# this step only needs the source archive. runtime/fetch-firmware.py's
+# `source` subcommand calls the same fetch_artifacts.fetch() function but
+# only for the source-archive entry (with retries), so use that instead.
 log "fetching NVIDIA open kernel module source (~25 MB)"
-if ! python3 "$VENDOR/fetch_artifacts.py" "$scratch/inputs" 2>>"$LOG"; then
+if ! python3 "$CONFIG_ROOT/runtime/fetch-firmware.py" source \
+    --upstream "$VENDOR" --out "$scratch/inputs" 2>>"$LOG"; then
   fail "could not fetch/verify the NVIDIA kernel module source archive; see $LOG for the exact URL and error"
 fi
 tar -xf "$scratch/inputs/NVIDIA-kernel-module-source-$VERSION.tar.xz" -C "$scratch" ||
