@@ -5,15 +5,20 @@ Two subcommands, both stdlib-only:
 
   firmware  Get gsp_ga10x.bin and the NVIDIA license, check them against the
             SHA-256 values pinned by the upstream manifest, then build the V67
-            image with upstream's generator. Sources are tried in order:
+            image with upstream's generator. Sources are tried in order, and
+            every one is independently hash-verified at the member level:
               1. a file you staged in <plugin>/firmware-src/
               2. NVIDIA's own installer (.run), streamed and never executed
-              3. the CachyOS package (kept as a last resort; the file may be gone)
+              3. CachyOS's package (may be gone; see tests/test-pins behaviour)
+              4. Arch Linux's archived package (a different build of the same
+                 driver version; verified the same way)
   source    Download the NVIDIA open kernel module source archive (hash-checked).
 
-Trust comes from the SHA-256 of the extracted bytes, never from an HTTP status.
-A mirror that answers 200 with an HTML page (as archive.cachyos.org does for a
-removed file) simply fails verification and the next source is tried.
+Trust comes from the SHA-256 of the extracted bytes, never from an HTTP status
+or from a whole-file hash that only one specific build would match. A mirror
+that answers 200 with an HTML page (as archive.cachyos.org does for a removed
+file), or a differently-built package, simply fails or is verified at the
+member level, and the next source is tried.
 """
 from __future__ import annotations
 
@@ -36,7 +41,15 @@ RUN_URLS = (
     f"https://us.download.nvidia.com/XFree86/Linux-x86_64/{VERSION}/{RUN_NAME}",
 )
 PKG_NAME = f"nvidia-utils-{VERSION}-1-x86_64_v3.pkg.tar.zst"
-PKG_URLS = (f"https://archive.cachyos.org/archive/cachyos-v3/{PKG_NAME}",)
+# Several distributions' package archives have shipped a build of this exact
+# NVIDIA driver version; any of them embeds the same NVIDIA-authored
+# gsp_ga10x.bin and license, which is what is actually verified (see
+# from_package below) -- a mismatched *package* hash across build variants is
+# expected and is not treated as a failure.
+PKG_URLS = (
+    f"https://archive.cachyos.org/archive/cachyos-v3/{PKG_NAME}",
+    f"https://archive.archlinux.org/packages/n/nvidia-utils/nvidia-utils-{VERSION}-1-x86_64.pkg.tar.zst",
+)
 RUN_GSP_MEMBER = "firmware/gsp_ga10x.bin"
 RUN_LICENSE_MEMBER = "LICENSE"
 MAX_MEMBER_BYTES = 128 * 1024 * 1024
@@ -189,15 +202,18 @@ def from_run(read, upstream, license_hashes: set[str], deadline: float, progress
     return gsp, license_text
 
 
-# --- CachyOS package (legacy) ---------------------------------------------
+# --- Distribution packages (CachyOS, Arch, or a staged file) --------------
 
 def from_package(path: Path, upstream, manifest_notice: dict):
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1 << 20), b""):
-            digest.update(block)
-    if digest.hexdigest() != upstream.PACKAGE_SHA256:
-        raise SourceError("package does not match the pinned SHA-256 (the mirror may no longer host it)")
+    """Pull the GSP firmware and license out of any nvidia-utils package build.
+
+    Different distributions (and architecture variants, e.g. x86_64 vs
+    x86_64_v3) produce different whole-package bytes for the same driver
+    version, so the package's own SHA-256 only matches the exact build this
+    project originally pinned (CachyOS's x86_64_v3). Verification therefore
+    happens at the member level: the extracted gsp_ga10x.bin and license text
+    must match the pinned hashes regardless of which package supplied them.
+    """
     gsp = upstream.extract_member(path, upstream.FIRMWARE_PREFIX + "gsp_ga10x.bin")
     if sha256(gsp) != upstream.GSP_SHA256:
         raise SourceError("GSP firmware in the package does not match the pinned SHA-256")

@@ -54,8 +54,8 @@ def main() -> int:
 
     text = PLG.read_text()
     updated, count = FILE_RE.subn(pin, text)
-    if count != 4:
-        print(f"expected 4 downloads, found {count}", file=sys.stderr)
+    if count != 11:
+        print(f"expected 11 downloads, found {count}", file=sys.stderr)
         return 1
     PLG.write_text(updated)
     print(f"Pinned runtime downloads to {commit}")
