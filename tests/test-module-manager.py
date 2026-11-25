@@ -133,6 +133,48 @@ def main() -> int:
             mm.module_matches_kernel = original_matches
         print("ok: ensure() refuses an existing, vermagic-matching module that is quarantined")
 
+        # 9b. ensure()'s full fetch-and-verify path, against a `modinfo` that
+        #     resolves its argument by filename suffix rather than content --
+        #     this is how a real Unraid box's modinfo actually behaved, and
+        #     it silently failed every download because the pre-rename
+        #     candidate was named ".gpu_unlock.ko.new" (does not end in
+        #     ".ko"). No offline test exercised this path before: every other
+        #     test here either stubs module_matches_kernel() outright or
+        #     never reaches the download step, so this bug shipped to a real
+        #     box before being caught.
+        fake_bin_dir = work / "fakebin"
+        fake_bin_dir.mkdir()
+        fake_modinfo = fake_bin_dir / "modinfo"
+        fake_modinfo.write_text(
+            "#!/bin/sh\n"
+            "case \"$3\" in\n"
+            "  *.ko) echo '6.18.64-Unraid SMP preempt mod_unload ' ;;\n"
+            "  *) echo \"modinfo: ERROR: Module $3 not found.\" >&2; exit 1 ;;\n"
+            "esac\n")
+        fake_modinfo.chmod(0o755)
+        module_bytes = b"pretend module bytes; a real modinfo would read the ELF, this fake one only checks the suffix"
+        module_digest = hashlib.sha256(module_bytes).hexdigest()
+        root3 = work / "root3"
+        fetch_manifest_path = work / "fetch-modules.json"
+        fetch_manifest_path.write_text(
+            '{"schema": 1, "modules": {"6.18.64-Unraid": '
+            f'{{"url": "https://example.invalid/gpu_unlock.ko", "sha256": "{module_digest}"}}}}}}')
+        original_http_get = mm.http_get
+        original_path = __import__("os").environ.get("PATH", "")
+        mm.http_get = lambda url, limit, timeout: module_bytes
+        __import__("os").environ["PATH"] = f"{fake_bin_dir}:{original_path}"
+        try:
+            message = mm.ensure("6.18.64-Unraid", root3, str(fetch_manifest_path), 5)
+            installed = root3 / "payload" / "6.18.64-Unraid" / "gpu_unlock.ko"
+            assert installed.read_bytes() == module_bytes, "downloaded module was not staged at the final .ko path"
+            assert "downloaded module for 6.18.64-Unraid" in message
+            leftovers = list((root3 / "payload" / "6.18.64-Unraid").glob(".gpu_unlock*"))
+            assert not leftovers, f"candidate temp file was not cleaned up: {leftovers}"
+        finally:
+            mm.http_get = original_http_get
+            __import__("os").environ["PATH"] = original_path
+        print("ok: ensure() downloads, verifies and stages a module against a suffix-sensitive modinfo")
+
         # 10. prefetch() is a no-op (not an error) when no update is pending.
         running = "6.18.58-Unraid"
         image.write_bytes(make_bzimage(running))

@@ -179,7 +179,13 @@ def ensure(kernel: str, root: Path, manifest_location: str, timeout: int) -> str
         raise ModuleError(f"downloaded module for {kernel} does not match the manifest SHA-256", EXIT_NETWORK)
     staging = root / "payload" / kernel
     staging.mkdir(parents=True, exist_ok=True)
-    candidate = staging / ".gpu_unlock.ko.new"
+    # Must end in ".ko": some real-world `modinfo` builds (confirmed on an
+    # actual Unraid box, not reproducible against the GNU kmod used in CI)
+    # resolve their argument by filename suffix rather than by content, and
+    # report "Module ... not found" for any path not ending in .ko -- even
+    # a byte-for-byte valid module. A name like ".gpu_unlock.ko.new" silently
+    # made module_matches_kernel() fail on every single real download.
+    candidate = staging / ".gpu_unlock.new.ko"
     try:
         write_atomic(candidate, data)
         if not module_matches_kernel(candidate, kernel):
