@@ -53,43 +53,43 @@
     <SHA256>ec89b77b2bf2019654b822b84f7c5a8da446cd14cacd0a435ce781ccd4c74621</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/early-load.sh">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/ec5e2cc127fa4b2690e6ecf19b13a587340d38fa/runtime/early-load.sh</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/4f0f61869401b68416820505dd47e9145bb21bc7/runtime/early-load.sh</URL>
     <SHA256>1d8e363872e0faf4bc020796010fcbfb34d0e6adc74d32b6f837220ef2b79c3f</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/prepare-firmware.sh">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/ec5e2cc127fa4b2690e6ecf19b13a587340d38fa/runtime/prepare-firmware.sh</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/4f0f61869401b68416820505dd47e9145bb21bc7/runtime/prepare-firmware.sh</URL>
     <SHA256>bd2f78ff60f431b755eeb652c2de44f6a325d6912935f30e9228e8cc2e21db23</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/configure-boot.py">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/ec5e2cc127fa4b2690e6ecf19b13a587340d38fa/runtime/configure-boot.py</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/4f0f61869401b68416820505dd47e9145bb21bc7/runtime/configure-boot.py</URL>
     <SHA256>ee084d3458251c2bfffb30b6bd429a4609036200cc7c69aa3bc03ca9010841c3</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/fetch-firmware.py">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/ec5e2cc127fa4b2690e6ecf19b13a587340d38fa/runtime/fetch-firmware.py</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/4f0f61869401b68416820505dd47e9145bb21bc7/runtime/fetch-firmware.py</URL>
     <SHA256>f9bbbee1b9a80452a4656ee08c92dfac0d25346e8884818e96b2d6cbd6920caf</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/runtime/module-manager.py">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/ec5e2cc127fa4b2690e6ecf19b13a587340d38fa/runtime/module-manager.py</URL>
-    <SHA256>2287305dc81269d435b03c1783cca0e3ab522375bc4e094b69b258d52d3374e1</SHA256>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/4f0f61869401b68416820505dd47e9145bb21bc7/runtime/module-manager.py</URL>
+    <SHA256>e746a9a60ba9266172977454c0c0a6363408c202ad2d30e5ca7395094edf21f3</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/vendor/zagitta-firmware/generate_v67.py">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/ec5e2cc127fa4b2690e6ecf19b13a587340d38fa/vendor/zagitta-firmware/generate_v67.py</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/4f0f61869401b68416820505dd47e9145bb21bc7/vendor/zagitta-firmware/generate_v67.py</URL>
     <SHA256>4b41e5199c6b9968d134c43a5a42d8127d094eebfe9dca78204be4d7c8237fd0</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/vendor/zagitta-firmware/artifacts-610.43.03.json">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/ec5e2cc127fa4b2690e6ecf19b13a587340d38fa/vendor/zagitta-firmware/artifacts-610.43.03.json</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/4f0f61869401b68416820505dd47e9145bb21bc7/vendor/zagitta-firmware/artifacts-610.43.03.json</URL>
     <SHA256>766be4acb90a9ce2448adc3eb4cead81ea142e96b614f30bde1600b74fe5a4bc</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/vendor/zagitta-firmware/fetch_artifacts.py">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/ec5e2cc127fa4b2690e6ecf19b13a587340d38fa/vendor/zagitta-firmware/fetch_artifacts.py</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/4f0f61869401b68416820505dd47e9145bb21bc7/vendor/zagitta-firmware/fetch_artifacts.py</URL>
     <SHA256>5655e3e497b16e17e3a9c307cf733ef2207cd7a3d0be5a9d0b2c532d66abe76b</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/vendor/zagitta-firmware/extract_boot_assets.py">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/ec5e2cc127fa4b2690e6ecf19b13a587340d38fa/vendor/zagitta-firmware/extract_boot_assets.py</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/4f0f61869401b68416820505dd47e9145bb21bc7/vendor/zagitta-firmware/extract_boot_assets.py</URL>
     <SHA256>7acc5f488cd35700c499bc942a07e7d0d9b0822b1e2ad040cd34bacf99fa5986</SHA256>
   </FILE>
   <FILE Name="/boot/config/plugins/RTX-3090-Unlock/vendor/zagitta-firmware/NOTICE.md">
-    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/ec5e2cc127fa4b2690e6ecf19b13a587340d38fa/vendor/zagitta-firmware/NOTICE.md</URL>
+    <URL>https://raw.githubusercontent.com/nonkronk/unraid-3090-unlock/4f0f61869401b68416820505dd47e9145bb21bc7/vendor/zagitta-firmware/NOTICE.md</URL>
     <SHA256>56c8d56ca47d705de6c68a62630d42115040ab47f94fb93ca37ba74a428cb875</SHA256>
   </FILE>
 
