@@ -6,6 +6,11 @@
       "unraid_version": "7.3.4",
       "kernel_release": "6.18.58-Unraid",
       "status": "supported"
+    },
+    {
+      "unraid_version": "7.4.1",
+      "kernel_release": "6.18.64-Unraid",
+      "status": "build-only"
     }
   ]
 }
